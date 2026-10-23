@@ -18,20 +18,31 @@ class DbNormalizationToolApplicationTests {
     private BaoDongAlgorithm baoDongAlgorithm;
 
     @Test
-    void testTinhBaoDong() {
-        // Giả lập tập FD: {A->B, C->D, B->E}
+    void testTinhBaoDongVaKiemTraSuyDien() {
+        // Du lieu minh hoa; thay U va F bang du lieu cua phan 1 khi co.
         PhuThuocHam fd1 = new PhuThuocHam(Set.of("A"), Set.of("B"));
         PhuThuocHam fd2 = new PhuThuocHam(Set.of("C"), Set.of("D"));
         PhuThuocHam fd3 = new PhuThuocHam(Set.of("B"), Set.of("E"));
-        List<PhuThuocHam> tapF = Arrays.asList(fd1, fd2, fd3);
+        List<PhuThuocHam> tapF = List.of(fd1, fd2, fd3);
+        LoDoQuanHe loDo = new LoDoQuanHe(Set.of("A", "B", "C", "D", "E"), tapF);
 
-        // Tính bao đóng của {A, C}+
-        Set<String> tapX = new HashSet<>(Arrays.asList("A", "C"));
-        Set<String> ketQua = baoDongAlgorithm.tinhBaoDong(tapX, tapF);
+        Set<String> tapX = Set.of("A", "C");
+        Set<String> ketQua = baoDongAlgorithm.tinhBaoDong(tapX, loDo.getTapPhuThuocHam());
+        PhuThuocHam suyDienDuoc = new PhuThuocHam(Set.of("A"), Set.of("E"));
+        PhuThuocHam khongSuyDienDuoc = new PhuThuocHam(Set.of("A"), Set.of("D"));
 
-        // In kết quả ra màn hình
+        assertEquals(Set.of("A", "B", "C", "D", "E"), ketQua);
+        assertTrue(baoDongAlgorithm.kiemTraSuyDien(suyDienDuoc, loDo.getTapPhuThuocHam()));
+        assertFalse(baoDongAlgorithm.kiemTraSuyDien(khongSuyDienDuoc, loDo.getTapPhuThuocHam()));
+
         System.out.println("=================================================");
-        System.out.println("KẾT QUẢ THUẬT TOÁN: Bao đóng của {A, C} là: " + ketQua);
+        System.out.println("Lược đồ U: " + new TreeSet<>(loDo.getTapThuocTinh()));
+        System.out.println("Tập F: " + loDo.getTapPhuThuocHam());
+        System.out.println("Bao đóng của {A, C}: " + new TreeSet<>(ketQua));
+        System.out.println(suyDienDuoc + " suy diễn được từ F: "
+                + baoDongAlgorithm.kiemTraSuyDien(suyDienDuoc, loDo.getTapPhuThuocHam()));
+        System.out.println(khongSuyDienDuoc + " suy diễn được từ F: "
+                + baoDongAlgorithm.kiemTraSuyDien(khongSuyDienDuoc, loDo.getTapPhuThuocHam()));
         System.out.println("=================================================");
     }
 }
