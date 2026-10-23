@@ -1,0 +1,70 @@
+# ==========================================================
+# DE TAI 10 - CSDL QUAN LY DAO TAO DAI HOC
+# PHAN 1: TAP THUOC TINH U VA TAP PHU THUOC HAM F  (ban chinh thuc)
+# ==========================================================
+# DINH DANG FILE (backend Java va frontend dung chung):
+#   - Dong bat dau bang '#' la ghi chu, bo qua. Dong trong cung bo qua.
+#   - Dong 'U:' liet ke cac thuoc tinh, cach nhau boi dau phay.
+#   - Dong 'F:' bat dau tap phu thuoc ham; moi dong sau do co dang
+#         VE_TRAI -> VE_PHAI
+#     cac thuoc tinh trong moi ve cach nhau boi dau phay.
+#   - Ten thuoc tinh khong dau, phan biet hoa thuong, khong co khoang trang.
+#
+# GIA DINH MO HINH:
+#   - MaSV, MaGV la ma dinh danh rieng cua SINHVIEN, GIANGVIEN
+#     (sau khi anh xa mo hinh ke thua tu thuc the cha NGUOI).
+#   - TenSV, TenGV, NgaySinh duoc anh xa tu NGUOI (HoTen, NgaySinh).
+#   - Moi lop hoc phan co dung 1 hoc phan, 1 giang vien, 1 phong,
+#     1 hoc ky va 1 lich hoc dai dien (Thu, TietBD).
+#   - Moi sinh vien chi co 1 diem cho moi lop hoc phan da dang ky.
+#   - Khong co 2 lop hoc phan cung dung 1 phong, hoac cung 1 giang vien,
+#     vao cung (HocKy, Thu, TietBD).
+#   - U la luoc do tong hop de kiem thu cac thuat toan ly thuyet CSDL
+#     (bao dong, khoa, dang chuan, phan ra); KHONG phai 1 bang vat ly duy nhat.
+#
+# U gom 21 thuoc tinh:
+#   Sinh vien : MaSV, TenSV, NgaySinh
+#   Nganh     : MaNganh, TenNganh
+#   Khoa      : MaKhoa, TenKhoa
+#   Hoc phan  : MaHP, TenHP, SoTC
+#   Lop HP    : MaLHP, HocKy, Thu, TietBD
+#   Giang vien: MaGV, TenGV, HocVi
+#   Phong hoc : MaPhong, ToaNha, SucChua
+#   Dang ky   : Diem
+# ==========================================================
+
+U: MaSV, TenSV, NgaySinh, MaNganh, TenNganh, MaKhoa, TenKhoa, MaHP, TenHP, SoTC, MaLHP, HocKy, Thu, TietBD, MaGV, TenGV, HocVi, MaPhong, ToaNha, SucChua, Diem
+
+F:
+# --- Sinh vien - Nganh - Khoa ---
+MaSV -> TenSV, NgaySinh, MaNganh
+MaNganh -> TenNganh, MaKhoa
+MaKhoa -> TenKhoa
+
+# --- Hoc phan ---
+MaHP -> TenHP, SoTC
+
+# --- Lop hoc phan ---
+MaLHP -> MaHP, HocKy, MaGV, MaPhong, Thu, TietBD
+
+# --- Giang vien ---
+MaGV -> TenGV, HocVi
+
+# --- Phong hoc ---
+MaPhong -> ToaNha, SucChua
+
+# --- Dang ky hoc phan ---
+MaSV, MaLHP -> Diem
+
+# --- Rang buoc lich (khong trung phong, khong trung giang vien) ---
+MaPhong, HocKy, Thu, TietBD -> MaLHP
+MaGV, HocKy, Thu, TietBD -> MaLHP
+
+# ==========================================================
+# PHU THUOC TUY CHON (KHONG nam trong F chinh)
+# Chi them vao F neu quy che xac nhan sinh vien KHONG duoc dang ky
+# nhieu lop cua cung 1 hoc phan trong 1 hoc ky (hoc lai/hoc cai thien
+# cung hoc ky thi KHONG duoc them):
+#     MaSV, MaHP, HocKy -> MaLHP
+# Neu them, U co them khoa {MaSV, MaHP, HocKy} (tong 4 khoa).
+# ==========================================================

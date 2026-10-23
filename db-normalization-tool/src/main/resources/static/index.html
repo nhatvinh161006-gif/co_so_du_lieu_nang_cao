@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Công cụ học tập phân tích phụ thuộc hàm và chuẩn hóa cơ sở dữ liệu.">
+  <title>N10 — Công cụ thiết kế CSDL</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="core.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Đi đến nội dung</a>
+<aside class="sidebar">
+  <a class="brand" href="#" aria-label="N10"><span class="brand-icon" aria-hidden="true">N<span>·</span></span>N10<span class="brand-dot" aria-hidden="true">.</span></a>
+  <p class="sidebar-label">KHÔNG GIAN LÀM VIỆC</p>
+  <nav aria-label="Điều hướng chính">
+    <button class="nav-item active" data-page="workspace"><span aria-hidden="true">▦</span> Phân tích lược đồ</button>
+    <button class="nav-item" data-page="dataset"><span aria-hidden="true">▤</span> Dữ liệu &amp; sơ đồ EER</button>
+    <button class="nav-item" data-page="guide"><span aria-hidden="true">▧</span> Hướng dẫn sử dụng</button>
+  </nav>
+</aside>
+<div class="shell">
+  <header class="topbar"><span>Công cụ thiết kế CSDL <span class="crumb">/ <span id="breadcrumb">Phân tích lược đồ</span></span></span></header>
+  <main id="main">
+    <section id="page-workspace">
+      <div class="page-heading"><div><p class="eyebrow">HIỂU DỮ LIỆU. THIẾT KẾ TỐT HƠN.</p><h1>Phân tích lược đồ</h1><p>Khám phá phụ thuộc hàm, từng bước một.</p></div><button id="load-sample" class="button secondary"><span aria-hidden="true">↗</span> Nạp dữ liệu mẫu</button></div>
+      <div class="workspace-grid">
+        <section class="panel input-panel" aria-labelledby="input-title">
+          <div class="panel-heading"><div><span class="section-number">01</span><h2 id="input-title">Lược đồ đầu vào</h2></div><button id="reset" class="text-button">Xóa dữ liệu</button></div>
+          <div class="panel-body">
+            <div class="field-heading"><label for="attributes">Tập thuộc tính <span class="math">U</span></label><span id="attribute-count" class="count">0 thuộc tính</span></div>
+            <textarea id="attributes" rows="4" spellcheck="false" placeholder="Ví dụ: MaSV, TenSV, MaLHP, Diem" aria-describedby="attribute-help attributes-error"></textarea>
+            <p id="attributes-error" class="field-error" role="alert" hidden></p>
+            <p class="helper" id="attribute-help">Phân tách bằng dấu phẩy. Tên thuộc tính phân biệt hoa thường.</p>
+            <div class="field-heading fd-heading"><label for="dependencies">Tập phụ thuộc hàm <span class="math">F</span></label><span id="fd-count" class="count">0 phụ thuộc</span></div>
+            <textarea id="dependencies" class="code-input" rows="12" spellcheck="false" placeholder="MaSV -> TenSV&#10;MaSV, MaLHP -> Diem" aria-describedby="fd-help dependencies-error"></textarea>
+            <p id="dependencies-error" class="field-error" role="alert" hidden></p>
+            <p class="helper" id="fd-help">Mỗi dòng một phụ thuộc: <code>X -> Y</code>. Hỗ trợ nhiều thuộc tính ở mỗi vế.</p>
+            <div class="file-actions"><button id="import" class="button subtle">↑ Nhập file .txt</button><button id="export" class="button subtle">↓ Xuất U, F</button><input id="file-input" type="file" accept=".txt,text/plain" hidden></div>
+            <p id="import-error" class="field-error" role="alert" hidden></p>
+            <div id="undo-bar" class="undo-bar" hidden><span>Có thể khôi phục dữ liệu trước lần thay thế gần nhất.</span><button id="undo" class="text-button">Hoàn tác</button></div>
+          </div>
+          <div class="input-footer"><span class="status-dot"></span><span id="data-status">Sẵn sàng nhập dữ liệu</span></div>
+        </section>
+        <div class="right-column">
+          <section class="panel" aria-labelledby="tool-title">
+            <div class="panel-heading"><div><span class="section-number">02</span><h2 id="tool-title">Chọn công cụ</h2></div><span class="subtle-label">PHÂN TÍCH</span></div>
+            <div class="panel-body tools-body">
+              <div class="tool-tabs" role="group" aria-label="Công cụ phân tích">
+                <button class="tool-tab selected" data-tool="closure" aria-pressed="true"><span class="tool-symbol">X⁺</span><span>Bao đóng<small>Tìm tập thuộc tính suy ra</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="implication" aria-pressed="false"><span class="tool-symbol">→</span><span>Suy diễn<small>Kiểm tra phụ thuộc hàm</small></span><span class="radio-dot"></span></button>
+              </div>
+              <div class="query-fields"><div><label id="x-label" for="query-x">Tập thuộc tính cần tính bao đóng (X)</label><input id="query-x" placeholder="Ví dụ: MaSV" spellcheck="false" aria-describedby="query-x-error"><p id="query-x-error" class="field-error" role="alert" hidden></p></div><div id="y-field" hidden><label for="query-y">Vế phải cần kiểm tra (Y)</label><input id="query-y" placeholder="Ví dụ: TenKhoa" spellcheck="false" aria-describedby="query-y-error"><p id="query-y-error" class="field-error" role="alert" hidden></p></div></div>
+              <div class="run-row"><span id="query-help" class="helper">Tìm tất cả thuộc tính có thể suy ra từ X.</span><button id="run" class="button primary">Tính bao đóng <span aria-hidden="true">→</span></button></div>
+            </div>
+          </section>
+          <section class="panel result-panel" aria-labelledby="result-title">
+            <div class="panel-heading"><div><span class="section-number">03</span><h2 id="result-title">Công cụ học tập</h2></div><span class="learning-badge">Từng bước giải</span></div>
+            <div id="error" class="error" role="alert" hidden></div>
+            <div id="empty-result" class="empty-result"><div class="empty-symbol">{ X } <span>→</span> X⁺</div><h3>Mỗi kết quả đều có lời giải</h3><p>Nhập lược đồ, chọn công cụ và bắt đầu phân tích.<br>Các bước suy luận sẽ xuất hiện tại đây.</p><div class="empty-hint"><span>01 Nhập dữ liệu</span><b>→</b><span>02 Phân tích</span><b>→</b><span>03 Khám phá</span></div></div>
+            <div id="result" class="panel-body" hidden aria-live="polite">
+              <div class="result-summary"><div class="result-top"><span id="result-label" class="tiny-label"></span><span id="result-count" class="count"></span></div><h3 id="result-verdict"></h3><h4 class="closure-label">Bao đóng X⁺</h4><div id="result-attributes" class="chips"></div><p id="result-note"></p></div>
+              <div class="steps-heading"><h3>Lời giải chi tiết</h3><button id="copy-result" class="text-button">Sao chép kết quả</button></div>
+              <details id="steps-details" class="steps-details" open><summary>Quá trình suy luận <span>Nhấn để mở / thu gọn</span></summary>
+              <ol id="steps" class="steps"></ol>
+              </details>
+              <div class="completion">✓ Đạt điểm cố định: không còn thuộc tính mới được thêm.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+    <section id="page-dataset" hidden>
+      <div class="page-heading"><div><p class="eyebrow">DỮ LIỆU MẪU</p><h1>Mô hình quản lý đào tạo</h1><p>Khám phá phụ thuộc hàm qua bài toán quản lý đào tạo.</p></div><button id="use-dataset" class="button primary">Dùng bộ dữ liệu này →</button></div>
+      <div class="dataset-stats"><div class="panel"><strong>21</strong><span>Thuộc tính</span></div><div class="panel"><strong>10</strong><span>Phụ thuộc hàm</span></div><div class="panel"><strong>3</strong><span>Khóa ứng viên mong đợi</span></div></div>
+      <div class="panel panel-body prose"><h2>Các giả định của bộ dữ liệu</h2><p>Mỗi lớp học phần có một lịch học đại diện, một phòng và một giảng viên. Mỗi sinh viên có một điểm cho mỗi lớp đã đăng ký. U là lược đồ tổng hợp dùng để phân tích, không phải một bảng vật lý duy nhất.</p><p>Phụ thuộc tùy chọn <code>MaSV, MaHP, HocKy → MaLHP</code> không nằm trong F chính.</p><a class="text-link" href="U_F.txt" download>Tải file U, F gốc ↓</a><h3>Khóa ứng viên mong đợi</h3><ul><li>MaSV, MaLHP</li><li>MaSV, MaGV, HocKy, Thu, TietBD</li><li>MaSV, MaPhong, HocKy, Thu, TietBD</li></ul><p class="helper">Kết quả tham khảo cho bộ dữ liệu mẫu, không phải kết quả của lược đồ đang nhập.</p></div>
+      <figure class="panel eer"><figcaption><h2>Sơ đồ thực thể – liên kết mở rộng</h2><a href="eer.jpg" target="_blank" rel="noopener">Mở ảnh đầy đủ ↗</a></figcaption><img src="eer.jpg" alt="Sơ đồ EER quản lý đào tạo: Khoa, Ngành, Người chuyên biệt thành Sinh viên và Giảng viên, Học phần, Phòng học, Lớp học phần và liên kết Đăng ký có Điểm." loading="lazy"></figure>
+    </section>
+    <section id="page-guide" hidden>
+      <div class="page-heading"><div><p class="eyebrow">BẮT ĐẦU TẠI ĐÂY</p><h1>Từ lược đồ đến lời giải</h1><p>Ba bước để khám phá dữ liệu của bạn.</p></div></div>
+      <div class="panel panel-body prose"><h2>1. Chuẩn bị U và F</h2><p>Nhập tên thuộc tính cách nhau bằng dấu phẩy. Mỗi phụ thuộc hàm nằm trên một dòng, ví dụ <code>MaSV -> TenSV, MaNganh</code>. Tên không dấu, không chứa khoảng trắng và có phân biệt hoa thường.</p><p>Bạn có thể nạp dữ liệu mẫu hoặc nhập file .txt có dòng <code>U:</code> và dòng <code>F:</code>. Dòng trống và dòng bắt đầu bằng # được bỏ qua.</p><h2>2. Chọn phép phân tích</h2><p><strong>Bao đóng:</strong> nhập X để tìm X⁺ theo tập phụ thuộc F. <strong>Suy diễn:</strong> nhập X và Y để kiểm tra Y có nằm trong X⁺ hay không. Mọi thuộc tính cần nằm trong U. Để biểu diễn tập rỗng, nhập <code>∅</code>.</p><h2>3. Theo dõi từng bước</h2><p>Bắt đầu từ X, áp dụng phụ thuộc khi vế trái đã có trong bao đóng, thêm thuộc tính mới ở vế phải. Lặp đến khi không còn thay đổi. Kết quả hiển thị phụ thuộc được áp dụng, thuộc tính mới và bao đóng sau mỗi bước.</p><h2>Lưu dữ liệu</h2><p>Dữ liệu chỉ nằm trong phiên đang mở; hãy xuất file để lưu trước khi tải lại trang.</p></div>
+    </section>
+    <footer class="page-footer"><span>N10 / DATABASE DESIGN LAB</span><span>Phân tích phụ thuộc hàm</span></footer>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
