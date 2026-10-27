@@ -1,0 +1,63 @@
+name: Main Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: Gemini 3.1 Pro
+    provider: gemini
+    model: gemini-3.1-pro-preview
+    apiKey: DÁN_API_KEY_CỦA_BẠN_VÀO_ĐÂY
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 1048576
+      maxTokens: 65536
+    capabilities:
+      - tool_use
+      - image_input
+
+  - name: Gemini 3.8 Flash
+    provider: gemini
+    model: gemini-3.8-flash
+    apiKey: DÁN_API_KEY_CỦA_BẠN_VÀO_ĐÂY
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 1048576
+      maxTokens: 65536
+    capabilities:
+      - tool_use
+      - image_input
+
+  - name: my gpt-5
+    provider: openai
+    model: gpt-5
+    apiKey: YOUR_OPENAI_API_KEY_HERE
+
+  - name: qwen2.5-coder 7b
+    provider: ollama
+    model: qwen2.5-coder:7b
+    roles:
+      - apply
+      - autocomplete
+      - chat
+      - edit
+
+  - name: Claude 4 Sonnet
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    apiKey: ${{ secrets.ANTHROPIC_API_KEY }}
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 200000
+      maxTokens: 64000
+    capabilities:
+      - tool_use
+      - image_input

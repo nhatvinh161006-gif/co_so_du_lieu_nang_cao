@@ -1,15 +1,19 @@
 package com.doan10.db_normalization_tool;
 
 import com.doan10.db_normalization_tool.algorithm.BaoDongAlgorithm;
+import com.doan10.db_normalization_tool.model.LoDoQuanHe;
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 class DbNormalizationToolApplicationTests {
