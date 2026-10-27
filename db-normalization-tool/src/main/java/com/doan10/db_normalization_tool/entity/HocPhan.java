@@ -1,15 +1,16 @@
 package com.doan10.db_normalization_tool.entity;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Lớp HocPhan - Trích xuất từ thực thể HOCPHAN trên sơ đồ EER
+ * Lớp HocPhan - Trích xuất từ thực thể HOCPHAN trên sơ đồ EER & Công việc.docx
  * Thể hiện:
  * 1. OID: id tự sinh bằng @Id @GeneratedValue
  * 2. Các thuộc tính trích xuất từ EER: maHP, tenHP, soTC
+ * 3. Thuộc tính tập hợp (Collection): List<LopHocPhan> dsLopHocPhan
  */
 @Entity
 public class HocPhan implements Serializable {
@@ -19,9 +20,12 @@ public class HocPhan implements Serializable {
     @GeneratedValue
     private Long id; // OID
 
-    private String maHP;     // Khớp MaHP trên sơ đồ EER
-    private String tenHP;    // Khớp TenHP trên sơ đồ EER
-    private int soTC;        // Khớp SoTC trên sơ đồ EER
+    private String maHP;     // Khớp MaHP trên sơ đồ EER (vd: "CSDL01")
+    private String tenHP;    // Khớp TenHP trên sơ đồ EER (vd: "Cơ sở dữ liệu nâng cao")
+    private int soTC;        // Khớp SoTC trên sơ đồ EER (vd: 3)
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<LopHocPhan> dsLopHocPhan = new ArrayList<>(); // Danh sách lớp học phần mở cho môn học này
 
     public HocPhan() {}
 
@@ -29,6 +33,17 @@ public class HocPhan implements Serializable {
         this.maHP = maHP;
         this.tenHP = tenHP;
         this.soTC = soTC;
+    }
+
+    // --- CÁC PHƯƠNG THỨC NGHIỆP VỤ ---
+    public void themLopHocPhan(LopHocPhan lhp) {
+        if (this.dsLopHocPhan == null) {
+            this.dsLopHocPhan = new ArrayList<>();
+        }
+        this.dsLopHocPhan.add(lhp);
+        if (lhp.getHocPhan() != this) {
+            lhp.setHocPhan(this);
+        }
     }
 
     // --- GETTER & SETTER ---
@@ -68,12 +83,17 @@ public class HocPhan implements Serializable {
         this.soTC = soTC;
     }
 
-    public int getSoTinChi() {
-        return soTC;
+    public List<LopHocPhan> getDsLopHocPhan() {
+        return dsLopHocPhan;
+    }
+
+    public void setDsLopHocPhan(List<LopHocPhan> dsLopHocPhan) {
+        this.dsLopHocPhan = dsLopHocPhan;
     }
 
     @Override
     public String toString() {
-        return "HocPhan[maHP=" + maHP + ", tenHP=" + tenHP + ", soTC=" + soTC + "]";
+        return "HocPhan[maHP=" + maHP + ", tenHP=" + tenHP + ", soTC=" + soTC + 
+               ", soLopDaMo=" + ((dsLopHocPhan != null) ? dsLopHocPhan.size() : 0) + "]";
     }
 }
