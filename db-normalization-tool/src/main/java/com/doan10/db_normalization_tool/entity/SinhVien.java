@@ -12,6 +12,7 @@ import java.util.List;
  * 3. Các phương thức xử lý nghiệp vụ thực tế (Business Methods):
  *    - themDangKy: Thêm đăng ký môn học
  *    - kiemTraTrungLich: Kiểm tra lịch học mới có trùng với các lớp đã đăng ký không
+ *    - daDatMonTienQuyet: Kiểm tra sinh viên đã vượt qua môn học tiên quyết chưa
  *    - tinhDiemTrungBinh: Tính ĐTB học kỳ/tích lũy có trọng số tín chỉ
  *    - tongTinChiTichLuy: Tính tổng tín chỉ của các môn đạt
  *    - xepLoaiHocLuc: Xếp loại học lực đại học
@@ -68,6 +69,26 @@ public class SinhVien extends Nguoi {
             }
         }
         return false;
+    }
+
+    /**
+     * Phương thức nghiệp vụ: Kiểm tra sinh viên đã thỏa mãn điều kiện tiên quyết
+     * của học phần này hay chưa (đã học môn tiên quyết và có điểm >= 4.0)
+     */
+    public boolean daDatMonTienQuyet(HocPhan hp) {
+        if (hp == null || !hp.coMonTienQuyet()) {
+            return true; // Không có môn tiên quyết -> Luôn thỏa mãn
+        }
+        HocPhan tq = hp.getHocPhanTienQuyet();
+        if (this.dsDangKy == null) return false;
+        for (DangKyMon dk : this.dsDangKy) {
+            if (dk.getLopHocPhan() != null && dk.getLopHocPhan().getHocPhan() != null) {
+                if (dk.getLopHocPhan().getHocPhan().getMaHP().equalsIgnoreCase(tq.getMaHP())) {
+                    return dk.laMonDat();
+                }
+            }
+        }
+        return false; // Chưa học hoặc chưa đạt môn tiên quyết
     }
 
     /**

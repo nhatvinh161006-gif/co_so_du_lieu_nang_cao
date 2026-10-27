@@ -10,7 +10,8 @@ import java.util.List;
  * Thể hiện:
  * 1. OID: id tự sinh bằng @Id @GeneratedValue
  * 2. Các thuộc tính trích xuất từ EER: maHP, tenHP, soTC
- * 3. Thuộc tính tập hợp (Collection): List<LopHocPhan> dsLopHocPhan
+ * 3. Quan hệ tự liên kết (Self-referencing): hocPhanTienQuyet (Điều kiện tiên quyết)
+ * 4. Thuộc tính tập hợp (Collection): List<LopHocPhan> dsLopHocPhan
  */
 @Entity
 public class HocPhan implements Serializable {
@@ -20,9 +21,13 @@ public class HocPhan implements Serializable {
     @GeneratedValue
     private Long id; // OID
 
-    private String maHP;     // Khớp MaHP trên sơ đồ EER (vd: "CSDL01")
+    private String maHP;     // Khớp MaHP trên sơ đồ EER (vd: "CSDL201")
     private String tenHP;    // Khớp TenHP trên sơ đồ EER (vd: "Cơ sở dữ liệu nâng cao")
     private int soTC;        // Khớp SoTC trên sơ đồ EER (vd: 3)
+
+    // Quan hệ tự liên kết: Môn học tiên quyết (Prerequisite Course)
+    @ManyToOne
+    private HocPhan hocPhanTienQuyet;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LopHocPhan> dsLopHocPhan = new ArrayList<>(); // Danh sách lớp học phần mở cho môn học này
@@ -35,7 +40,18 @@ public class HocPhan implements Serializable {
         this.soTC = soTC;
     }
 
+    public HocPhan(String maHP, String tenHP, int soTC, HocPhan hocPhanTienQuyet) {
+        this.maHP = maHP;
+        this.tenHP = tenHP;
+        this.soTC = soTC;
+        this.hocPhanTienQuyet = hocPhanTienQuyet;
+    }
+
     // --- CÁC PHƯƠNG THỨC NGHIỆP VỤ ---
+    public boolean coMonTienQuyet() {
+        return this.hocPhanTienQuyet != null;
+    }
+
     public void themLopHocPhan(LopHocPhan lhp) {
         if (this.dsLopHocPhan == null) {
             this.dsLopHocPhan = new ArrayList<>();
@@ -83,6 +99,14 @@ public class HocPhan implements Serializable {
         this.soTC = soTC;
     }
 
+    public HocPhan getHocPhanTienQuyet() {
+        return hocPhanTienQuyet;
+    }
+
+    public void setHocPhanTienQuyet(HocPhan hocPhanTienQuyet) {
+        this.hocPhanTienQuyet = hocPhanTienQuyet;
+    }
+
     public List<LopHocPhan> getDsLopHocPhan() {
         return dsLopHocPhan;
     }
@@ -93,7 +117,8 @@ public class HocPhan implements Serializable {
 
     @Override
     public String toString() {
+        String tq = (hocPhanTienQuyet != null) ? hocPhanTienQuyet.getMaHP() : "Không";
         return "HocPhan[maHP=" + maHP + ", tenHP=" + tenHP + ", soTC=" + soTC + 
-               ", soLopDaMo=" + ((dsLopHocPhan != null) ? dsLopHocPhan.size() : 0) + "]";
+               ", tienQuyet=" + tq + ", soLopDaMo=" + ((dsLopHocPhan != null) ? dsLopHocPhan.size() : 0) + "]";
     }
 }

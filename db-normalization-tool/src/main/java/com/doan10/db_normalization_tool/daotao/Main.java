@@ -11,8 +11,8 @@ import java.util.List;
 /**
  * Chương trình thực thi kết nối và nghiệm thu CSDL Hướng đối tượng (ObjectDB):
  * 1. Khởi tạo kết nối tới file CSDL db/daotao.odb
- * 2. Lưu trữ các đối tượng trích xuất từ sơ đồ EER & Công việc.docx (Nguoi, SinhVien, GiangVien, HocPhan, LopHocPhan, PhongHoc, DangKyMon)
- * 3. Kiểm thử các phương thức xử lý nghiệp vụ đóng gói trong Entity
+ * 2. Lưu trữ các đối tượng trích xuất từ sơ đồ EER & Công việc.docx
+ * 3. Kiểm thử các phương thức xử lý nghiệp vụ: kiểm tra trùng lịch, điều kiện tiên quyết, tính điểm, xếp loại
  * 4. Truy vấn JPQL nghiệm thu dữ liệu
  */
 public class Main {
@@ -35,7 +35,12 @@ public class Main {
             em.persist(ph1);
             em.persist(ph2);
 
-            HocPhan hp1 = new HocPhan("CSDL201", "Cơ Sở Dữ Liệu Nâng Cao", 3);
+            // Môn cơ sở CSDL101 làm môn tiên quyết
+            HocPhan hpCSDLCoSo = new HocPhan("CSDL101", "Cơ Sở Dữ Liệu Cơ Bản", 3);
+            em.persist(hpCSDLCoSo);
+
+            // Môn CSDL201 có môn tiên quyết là CSDL101
+            HocPhan hp1 = new HocPhan("CSDL201", "Cơ Sở Dữ Liệu Nâng Cao", 3, hpCSDLCoSo);
             HocPhan hp2 = new HocPhan("CNPM101", "Công Nghệ Phần Mềm", 4);
             HocPhan hp3 = new HocPhan("TRR102", "Toán Rời Rạc", 3);
             em.persist(hp1);
@@ -45,30 +50,36 @@ public class Main {
             GiangVien gv1 = new GiangVien("TS. Tran Van B", "1980-05-12", "Nam", "GV001", "Tiến sĩ");
             GiangVien gv2 = new GiangVien("ThS. Le Thi C", "1985-09-20", "Nữ", "GV002", "Thạc sĩ");
 
+            LopHocPhan lhpCoSo = new LopHocPhan("LHP00", "HK2-2025", 3, 1, hpCSDLCoSo, gv1, ph1);
             LopHocPhan lhp1 = new LopHocPhan("LHP01", "HK1-2026", 2, 1, hp1, gv1, ph1);
             LopHocPhan lhp2 = new LopHocPhan("LHP02", "HK1-2026", 4, 7, hp2, gv2, ph2);
+            gv1.phanCongLopDay(lhpCoSo);
             gv1.phanCongLopDay(lhp1);
             gv2.phanCongLopDay(lhp2);
+            hpCSDLCoSo.themLopHocPhan(lhpCoSo);
             hp1.themLopHocPhan(lhp1);
             hp2.themLopHocPhan(lhp2);
 
             em.persist(gv1);
             em.persist(gv2);
+            em.persist(lhpCoSo);
             em.persist(lhp1);
             em.persist(lhp2);
 
             SinhVien sv1 = new SinhVien("Nguyen Van A", "2004-11-15", "Nam", "SV001");
-            // CC: 9.0, GK: 8.0, CK: 8.5 -> DTK = 0.9 + 2.4 + 5.1 = 8.4
-            DangKyMon dk1 = new DangKyMon(sv1, lhp1, "2026-09-01", 9.0, 8.0, 8.5);
-            // CC: 10.0, GK: 9.0, CK: 9.0 -> DTK = 1.0 + 2.7 + 5.4 = 9.1
-            DangKyMon dk2 = new DangKyMon(sv1, lhp2, "2026-09-02", 10.0, 9.0, 9.0);
+            // SV001 đã học và đạt môn CSDL cơ sở ở kỳ trước (Điểm 8.0)
+            DangKyMon dkCoSo = new DangKyMon(sv1, lhpCoSo, "2025-01-10", 8.0, 8.0, 8.0);
+            DangKyMon dk1 = new DangKyMon(sv1, lhp1, "2026-09-01", 9.0, 8.0, 8.5); // CSDL NC: 8.4
+            DangKyMon dk2 = new DangKyMon(sv1, lhp2, "2026-09-02", 10.0, 9.0, 9.0); // CNPM: 9.1
+            sv1.themDangKy(dkCoSo);
             sv1.themDangKy(dk1);
             sv1.themDangKy(dk2);
+            lhpCoSo.themDangKy(dkCoSo);
             lhp1.themDangKy(dk1);
             lhp2.themDangKy(dk2);
 
             SinhVien sv2 = new SinhVien("Tran Thi Hoa", "2004-03-22", "Nữ", "SV002");
-            // CC: 8.0, GK: 7.0, CK: 7.0 -> DTK = 0.8 + 2.1 + 4.2 = 7.1
+            // SV2 đăng ký môn CSDL NC nhưng CHƯA học môn CSDL cơ sở
             DangKyMon dk3 = new DangKyMon(sv2, lhp1, "2026-09-03", 8.0, 7.0, 7.0);
             sv2.themDangKy(dk3);
             lhp1.themDangKy(dk3);
@@ -85,19 +96,27 @@ public class Main {
             System.out.println(">>> KIỂM THỬ PHƯƠNG THỨC XỬ LÝ NGHIỆP VỤ TRONG ENTITY:");
             System.out.println("----------------------------------------------------------------------");
 
+            // Test phương thức kiểm tra điều kiện tiên quyết
+            System.out.println("1. Kiểm tra điều kiện môn học tiên quyết (" + hp1.getTenHP() 
+                    + " cần tiên quyết: " + hp1.getHocPhanTienQuyet().getTenHP() + "):");
+            System.out.println("   + Sinh viên SV001 (" + sv1.getHoTen() + ") đủ điều kiện: " 
+                    + sv1.daDatMonTienQuyet(hp1) + " (Đã hoàn thành CSDL cơ bản)");
+            System.out.println("   + Sinh viên SV002 (" + sv2.getHoTen() + ") đủ điều kiện: " 
+                    + sv2.daDatMonTienQuyet(hp1) + " (Chưa học CSDL cơ bản -> Cảnh báo)");
+
             // Test phương thức kiểm tra trùng lịch
             LopHocPhan lhpTrung = new LopHocPhan("LHP03", "HK1-2026", 2, 1, hp3, gv2, ph1); // Trùng Thứ 2, Tiết 1
             LopHocPhan lhpKhongTrung = new LopHocPhan("LHP04", "HK1-2026", 5, 4, hp3, gv2, ph2);
 
-            System.out.println("1. Sinh viên SV001 đăng ký thử môn mới:");
+            System.out.println("\n2. Sinh viên SV001 đăng ký thử môn mới:");
             System.out.println("   + Lớp LHP03 (" + lhpTrung.getThongTinLichHoc() + ") -> Trùng lịch: "
                     + sv1.kiemTraTrungLich(lhpTrung) + " (Đã chặn trùng lịch)");
             System.out.println("   + Lớp LHP04 (" + lhpKhongTrung.getThongTinLichHoc() + ") -> Trùng lịch: "
                     + sv1.kiemTraTrungLich(lhpKhongTrung) + " (Hợp lệ để đăng ký)");
 
             // Test phương thức tính toán học lực và điểm 3 thành phần
-            System.out.println("\n2. Tính toán kết quả học tập của Sinh viên SV001:");
-            System.out.println("   + Điểm môn CSDL (CC 9.0, GK 8.0, CK 8.5) -> Tổng kết: " + dk1.tinhDiemTongKet() + " (" + dk1.getDiemChu() + ")");
+            System.out.println("\n3. Tính toán kết quả học tập của Sinh viên SV001:");
+            System.out.println("   + Điểm môn CSDL NC (CC 9.0, GK 8.0, CK 8.5) -> Tổng kết: " + dk1.tinhDiemTongKet() + " (" + dk1.getDiemChu() + ")");
             System.out.println("   + Điểm môn CNPM (CC 10.0, GK 9.0, CK 9.0) -> Tổng kết: " + dk2.tinhDiemTongKet() + " (" + dk2.getDiemChu() + ")");
             System.out.println("   + Tổng tín chỉ tích lũy: " + sv1.tongTinChiTichLuy() + " TC");
             System.out.println("   + Điểm trung bình tích lũy: " + sv1.tinhDiemTrungBinh() + " / 10");
