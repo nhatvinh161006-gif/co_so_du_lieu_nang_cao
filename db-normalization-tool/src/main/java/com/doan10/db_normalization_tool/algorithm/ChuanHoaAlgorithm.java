@@ -282,4 +282,149 @@ public class ChuanHoaAlgorithm {
 
         return response;
     }
+
+    /**
+     * Phân rã lược đồ quan hệ về dạng chuẩn BCNF (Boyce-Codd Normal Form).
+     *
+     * Thuật toán:
+     * 1. Bắt đầu với tập kết quả = {R}
+     * 2. Với mỗi quan hệ Ri trong tập kết quả:
+     *    - Tìm phụ thuộc hàm X → Y trong Ri mà X không phải siêu khóa
+     *    - Nếu tìm thấy, phân rã Ri thành:
+     *      + R1 = X ∪ Y
+     *      + R2 = Ri \ Y  (tức là Ri minus Y, giữ lại X)
+     * 3. Lặp đến khi không còn vi phạm
+     *
+     * Lưu ý: BCNF đảm bảo lossless join nhưng KHÔNG đảm bảo bảo toàn phụ thuộc hàm
+     */
+    public com.doan10.db_normalization_tool.dto.BcnfDecompositionResponse phanRaBCNF(
+            Set<String> universe, List<PhuThuocHam> tapF) {
+
+        com.doan10.db_normalization_tool.dto.BcnfDecompositionResponse response =
+                new com.doan10.db_normalization_tool.dto.BcnfDecompositionResponse();
+        List<StepLog> steps = new ArrayList<>();
+        int stepCount = 1;
+
+        if (universe == null || universe.isEmpty()) {
+            response.setSteps(steps);
+            return response;
+        }
+
+        // Danh sách các lược đồ con đang được xử lý
+        List<Set<String>> resultSchemas = new ArrayList<>();
+        resultSchemas.add(new TreeSet<>(universe));
+
+        steps.add(new StepLog(
+                stepCount++,
+                "Khởi tạo",
+                "Bắt đầu với lược đồ gốc R = " + new TreeSet<>(universe),
+                "R = " + new TreeSet<>(universe)
+        ));
+
+        // Lấy tất cả FD cần xét
+        List<com.doan10.db_normalization_tool.dto.PhuThuocHamDTO> violatingFDsDto = new ArrayList<>();
+
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (int i = 0; i < resultSchemas.size(); i++) {
+                Set<String> schema = resultSchemas.get(i);
+
+                // Tìm FD vi phạm BCNF trong schema này
+                PhuThuocHam violating = findBcnfViolation(schema, tapF);
+                if (violating != null) {
+                    changed = true;
+
+                    // Lưu FD vi phạm
+                    violatingFDsDto.add(new com.doan10.db_normalization_tool.dto.PhuThuocHamDTO(violating));
+
+                    // R1 = X ∪ Y (là bao đóng của X trong schema này)
+                    Set<String> closureXInSchema = new TreeSet<>(baoDongAlgorithm.tinhBaoDong(violating.getVT(), tapF));
+                    closureXInSchema.retainAll(schema); // chỉ lấy các thuộc tính thuộc schema
+
+                    Set<String> r1 = new TreeSet<>(violating.getVT());
+                    r1.addAll(violating.getVP());
+                    r1.retainAll(schema); // chỉ lấy phần thuộc schema
+
+                    // R2 = Ri \ (Y \ X)
+                    Set<String> r2 = new TreeSet<>(schema);
+                    Set<String> toRemove = new TreeSet<>(violating.getVP());
+                    toRemove.removeAll(violating.getVT()); // Y \ X
+                    r2.removeAll(toRemove);
+
+                    steps.add(new StepLog(
+                            stepCount++,
+                            "Phân rã vi phạm BCNF",
+                            String.format("Quan hệ %s vi phạm BCNF bởi FD %s → %s (vế trái không phải siêu khóa). " +
+                                    "Phân rã thành R1 = %s và R2 = %s.",
+                                    schema, violating.getVT(), violating.getVP(), r1, r2),
+                            String.format("R1 = %s, R2 = %s", r1, r2)
+                    ));
+
+                    // Thay schema cũ bằng 2 schema mới
+                    resultSchemas.remove(i);
+                    resultSchemas.add(r1);
+                    resultSchemas.add(r2);
+                    break; // Restart vòng lặp
+                }
+            }
+        }
+
+        // Loại bỏ các schema bị chứa trong schema khác
+        List<Set<String>> finalSchemas = new ArrayList<>();
+        for (int i = 0; i < resultSchemas.size(); i++) {
+            Set<String> r1 = resultSchemas.get(i);
+            boolean isSubset = false;
+            for (int j = 0; j < resultSchemas.size(); j++) {
+                if (i != j && resultSchemas.get(j).containsAll(r1) && !resultSchemas.get(j).equals(r1)) {
+                    isSubset = true;
+                    break;
+                }
+            }
+            if (!isSubset && !finalSchemas.contains(r1)) {
+                finalSchemas.add(r1);
+            }
+        }
+
+        steps.add(new StepLog(
+                stepCount,
+                "Kết quả phân rã BCNF",
+                String.format("Phân rã hoàn tất. Thu được %d lược đồ con đạt chuẩn BCNF. " +
+                        "Lưu ý: BCNF đảm bảo lossless join nhưng có thể không bảo toàn toàn bộ phụ thuộc hàm.",
+                        finalSchemas.size()),
+                finalSchemas.toString()
+        ));
+
+        response.setSubSchemas(finalSchemas);
+        response.setViolatingFDs(violatingFDsDto);
+        response.setSteps(steps);
+        return response;
+    }
+
+    /**
+     * Tìm một phụ thuộc hàm vi phạm BCNF trong schema cho trước.
+     * Vi phạm BCNF: X → Y mà X không phải siêu khóa của schema đó.
+     */
+    private PhuThuocHam findBcnfViolation(Set<String> schema, List<PhuThuocHam> tapF) {
+        if (tapF == null) return null;
+        for (PhuThuocHam fd : tapF) {
+            if (fd.getVT() == null || fd.getVP() == null) continue;
+            // FD này có liên quan đến schema không?
+            if (!schema.containsAll(fd.getVT())) continue;
+
+            Set<String> vpInSchema = new HashSet<>(fd.getVP());
+            vpInSchema.retainAll(schema);
+            if (vpInSchema.isEmpty()) continue;
+            if (fd.getVT().containsAll(vpInSchema)) continue; // Phụ thuộc hiển nhiên X → X
+
+            // Tính bao đóng của vế trái trong toàn bộ schema
+            Set<String> closure = baoDongAlgorithm.tinhBaoDong(fd.getVT(), tapF);
+            // Kiểm tra X có phải siêu khóa của schema không
+            boolean isSuperKey = closure.containsAll(schema);
+            if (!isSuperKey) {
+                return fd; // Vi phạm BCNF!
+            }
+        }
+        return null;
+    }
 }
