@@ -88,6 +88,10 @@ public class Main {
                 em.close();
             }
 
+            // Bước 4: Thực thi bộ 5 truy vấn OQL / JPQL chuyên sâu (Task 3)
+            System.out.println();
+            ObjectDbQueryDemo.runAllQueries(emf);
+
         } finally {
             emf.close();
         }
