@@ -1,33 +1,53 @@
 package com.doan10.db_normalization_tool.algorithm;
 
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
+import com.doan10.db_normalization_tool.model.StepLog;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-@Service // Đánh dấu đây là class xử lý logic của Spring
+@Service
 public class BaoDongAlgorithm {
 
     public Set<String> tinhBaoDong(Set<String> tapX, List<PhuThuocHam> tapF) {
-        Set<String> baoDong = new HashSet<>(tapX);
+        return tinhBaoDongChiTiet(tapX, tapF).baoDong();
+    }
+
+    public KetQuaBaoDong tinhBaoDongChiTiet(Set<String> tapX, List<PhuThuocHam> tapF) {
+        Set<String> baoDong = new LinkedHashSet<>(tapX);
+        List<StepLog> buocGiai = new ArrayList<>();
         boolean isChanged;
+        int vongLap = 0;
 
         do {
-            isChanged = false; // Reset cờ sau mỗi vòng
+            isChanged = false;
+            vongLap++;
             for (PhuThuocHam fd : tapF) {
-                // Nếu Vế trái nằm trọn trong bao đóng hiện tại
                 if (baoDong.containsAll(fd.getVT())) {
-                    // Nếu vế phải có chứa thuộc tính mới
-                    if (!baoDong.containsAll(fd.getVP())) {
-                        baoDong.addAll(fd.getVP()); // Thêm vế phải vào
-                        isChanged = true; // Đánh dấu có sự thay đổi
+                    Set<String> moi = new LinkedHashSet<>(fd.getVP());
+                    moi.removeAll(baoDong);
+                    if (!moi.isEmpty()) {
+                        baoDong.addAll(moi);
+                        isChanged = true;
+                        buocGiai.add(new StepLog(
+                                buocGiai.size() + 1,
+                                "Áp dụng phụ thuộc hàm",
+                                "Vòng " + vongLap + ": " + fd + " có vế trái nằm trong bao đóng; thêm "
+                                        + moi + ", bao đóng hiện tại là " + baoDong + "."));
                     }
                 }
             }
-        } while (isChanged); // Lặp đến khi kích thước bao đóng không đổi
+        } while (isChanged);
 
-        return baoDong;
+        buocGiai.add(new StepLog(
+                buocGiai.size() + 1,
+                "Đạt điểm cố định",
+                "Không còn phụ thuộc hàm nào thêm được thuộc tính mới. Bao đóng cuối cùng: " + baoDong + "."));
+        return new KetQuaBaoDong(baoDong, buocGiai);
     }
+
+    public record KetQuaBaoDong(Set<String> baoDong, List<StepLog> buocGiai) {}
 }

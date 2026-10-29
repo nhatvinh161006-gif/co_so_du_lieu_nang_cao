@@ -6,43 +6,30 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @SpringBootTest
 class DbNormalizationToolApplicationTests {
-
     @Autowired
     private BaoDongAlgorithm baoDongAlgorithm;
 
     @Test
     void testTinhBaoDongVaKiemTraSuyDien() {
-        // Du lieu minh hoa; thay U va F bang du lieu cua phan 1 khi co.
-        PhuThuocHam fd1 = new PhuThuocHam(Set.of("A"), Set.of("B"));
-        PhuThuocHam fd2 = new PhuThuocHam(Set.of("C"), Set.of("D"));
-        PhuThuocHam fd3 = new PhuThuocHam(Set.of("B"), Set.of("E"));
-        List<PhuThuocHam> tapF = List.of(fd1, fd2, fd3);
-        LoDoQuanHe loDo = new LoDoQuanHe(Set.of("A", "B", "C", "D", "E"), tapF);
+        List<PhuThuocHam> tapF = List.of(
+                new PhuThuocHam(Set.of("A"), Set.of("B")),
+                new PhuThuocHam(Set.of("C"), Set.of("D")),
+                new PhuThuocHam(Set.of("B"), Set.of("E")));
 
-        Set<String> tapX = Set.of("A", "C");
-        Set<String> ketQua = baoDongAlgorithm.tinhBaoDong(tapX, loDo.getTapPhuThuocHam());
-        PhuThuocHam suyDienDuoc = new PhuThuocHam(Set.of("A"), Set.of("E"));
-        PhuThuocHam khongSuyDienDuoc = new PhuThuocHam(Set.of("A"), Set.of("D"));
+        assertEquals(Set.of("A", "B", "C", "D", "E"),
+                baoDongAlgorithm.tinhBaoDong(Set.of("A", "C"), tapF));
 
-        assertEquals(Set.of("A", "B", "C", "D", "E"), ketQua);
-        assertTrue(baoDongAlgorithm.kiemTraSuyDien(suyDienDuoc, loDo.getTapPhuThuocHam()));
-        assertFalse(baoDongAlgorithm.kiemTraSuyDien(khongSuyDienDuoc, loDo.getTapPhuThuocHam()));
-
-        System.out.println("=================================================");
-        System.out.println("Lược đồ U: " + new TreeSet<>(loDo.getTapThuocTinh()));
-        System.out.println("Tập F: " + loDo.getTapPhuThuocHam());
-        System.out.println("Bao đóng của {A, C}: " + new TreeSet<>(ketQua));
-        System.out.println(suyDienDuoc + " suy diễn được từ F: "
-                + baoDongAlgorithm.kiemTraSuyDien(suyDienDuoc, loDo.getTapPhuThuocHam()));
-        System.out.println(khongSuyDienDuoc + " suy diễn được từ F: "
-                + baoDongAlgorithm.kiemTraSuyDien(khongSuyDienDuoc, loDo.getTapPhuThuocHam()));
-        System.out.println("=================================================");
+        Set<String> baoDongA = baoDongAlgorithm.tinhBaoDong(Set.of("A"), tapF);
+        assertTrue(baoDongA.contains("E"));
+        assertFalse(baoDongA.contains("D"));
     }
 }

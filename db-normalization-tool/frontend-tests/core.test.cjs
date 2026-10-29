@@ -50,3 +50,12 @@ test('UI sample stays identical to original file', () => {
   const f = script.match(/const sampleF = `([^`]+)`/)[1];
   assert.deepEqual(core.parse(u, f), { universe: data.universe, dependencies: data.dependencies });
 });
+test('UI sends every analysis tool to the backend without local algorithm fallback', () => {
+  const app = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/app.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/index.html'), 'utf8');
+  for (const tool of ['closure', 'implication', 'keys', 'minimal-cover', 'check-nf', 'decompose-3nf']) {
+    assert.ok(html.includes(`data-tool="${tool}"`));
+  }
+  assert.ok(app.includes('fetch(`/api/algorithms/${activeTool}`'));
+  assert.ok(!app.includes('Relatio.closure('));
+});

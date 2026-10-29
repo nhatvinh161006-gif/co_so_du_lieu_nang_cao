@@ -93,7 +93,7 @@ Người dùng đã cung cấp bộ dữ liệu và sơ đồ thực tế của 
 - [Kết quả mong đợi](member-1/ket_qua_mong_doi.txt).
 - [Sơ đồ EER](member-1/eer.jpg).
 
-Các tài liệu bổ sung thay thế trạng thái “chưa có U, F và EER” ở trên. Chưa xác nhận API/backend đã triển khai định dạng này. Các kết quả trong file là kết quả do thành viên cung cấp, chưa được trợ lý kiểm chứng toàn bộ bằng chương trình độc lập.
+Các tài liệu bổ sung thay thế trạng thái “chưa có U, F và EER” ở trên. Tại thời điểm ghi nhận ban đầu, API/backend chưa được xác nhận. Trạng thái triển khai và kiểm thử mới nhất được cập nhật ở cuối tài liệu.
 
 ### Dữ liệu và định dạng trao đổi được đề xuất
 
@@ -125,9 +125,9 @@ Các tài liệu bổ sung thay thế trạng thái “chưa có U, F và EER”
 
 Khi làm frontend, dùng bộ này làm dữ liệu mẫu của nhóm và các kết quả làm mốc đối chiếu sau khi xác minh; hỗ trợ tên thuộc tính nhiều ký tự, vế trái/vế phải nhiều thuộc tính và khu vực hiển thị từng bước. Đây là định hướng triển khai suy ra từ dữ liệu, chưa phải yêu cầu triển khai ngay của người dùng.
 
-## Triển khai frontend theo yêu cầu tiếp theo
+## Ghi nhận frontend ban đầu (23/10/2026)
 
-Người dùng đã yêu cầu thực hiện phần 3. Đã bổ sung frontend tĩnh tại `db-normalization-tool/src/main/resources/static`, mở được trực tiếp qua `index.html` hoặc phục vụ cùng Spring Boot. Xem [hướng dẫn frontend và hợp đồng API đề xuất](FRONTEND.md). Chưa có backend API; bao đóng/suy diễn hiện là minh họa JavaScript có ghi nhãn rõ, các chức năng nâng cao chờ tích hợp. Đã đối chiếu 7 ca bao đóng và 7 ca suy diễn của thành viên 1 bằng kiểm thử tự động; không đồng nghĩa đã xác minh toàn bộ các phần khóa/dạng chuẩn/phân rã trong tài liệu nguồn.
+Frontend ban đầu được tạo tại `db-normalization-tool/src/main/resources/static`; lúc ghi nhận, giao diện chạy độc lập và chưa kết nối API. Trạng thái này đã được thay thế bởi phần tích hợp backend ghi ngày 29/10/2026 ở cuối tài liệu.
 
 ## Tài liệu đề bài bổ sung ngày 23/10/2026
 
@@ -139,8 +139,18 @@ Người dùng đã yêu cầu thực hiện phần 3. Đã bổ sung frontend t
 - Đề bài còn yêu cầu dùng chính công cụ vào CSDL quản lý đào tạo; các bước nghiên cứu gợi ý gồm mã giả, phân tích độ phức tạp/tối ưu, kiểm thử giáo trình, cài đặt CSDL và truy vấn, so sánh lời giải tay và đo thời gian khi số thuộc tính tăng.
 - Các chỉ dẫn trong tài liệu là yêu cầu tham chiếu cho đồ án, không phải lệnh trực tiếp để tự triển khai toàn bộ hoặc đọc các liên kết bên ngoài ở lượt này.
 
-### Trạng thái mới nhất để tránh hiểu nhầm các ghi chú cũ
+### Trạng thái frontend tại lần ghi nhận 23/10/2026
 
-- Theo yêu cầu sau đó của người dùng, đã bỏ các nhãn nội bộ về frontend/tuần 1/backend và chế độ minh họa khỏi giao diện. Bao đóng và suy diễn vẫn tính bằng JavaScript tại trình duyệt; chưa kết nối API Java.
+- Theo yêu cầu khi đó, đã bỏ các nhãn nội bộ về frontend/tuần 1/backend và chế độ minh họa khỏi giao diện.
 - Đã bổ sung báo lỗi cạnh ô nhập, nhãn bao đóng X⁺, thu gọn lời giải, hoàn tác dữ liệu và tăng độ dễ đọc. 18 kiểm thử xử lý dữ liệu đạt; chưa xác minh trực quan trong trình duyệt do môi trường xem trước không hoạt động.
-- Trong lượt rà soát thành viên 1, chương trình đã xác nhận đủ 3 khóa ứng viên, 7 dòng F vi phạm 3NF và 9 dòng vi phạm BCNF; phân rã 8 quan hệ bảo toàn F, vượt qua chase không mất mát và mỗi quan hệ đạt BCNF theo F chiếu. Các lưu ý về giả định nghiệp vụ/ánh xạ NGUOI vẫn cần được làm rõ khi triển khai CSDL thực tế.
+- Trong lượt rà soát thành viên 1, các kết quả lý thuyết được đối chiếu ở phạm vi ghi nhận khi đó. Test backend hiện tại kiểm tra 3 khóa ứng viên, dạng chuẩn cao nhất 1NF và tám quan hệ phân rã; xem phần trạng thái mới bên dưới.
+
+## Trạng thái backend thuật toán và API (29/10/2026)
+
+Các ghi chú frontend ở trên mô tả trạng thái trước khi kết nối backend. Hiện tại:
+
+- Đã có bao đóng kèm `StepLog`, tìm tất cả khóa ứng viên, phủ tối thiểu, kiểm tra 1NF/2NF/3NF/BCNF và tổng hợp phân rã 3NF.
+- Đã có REST endpoints `POST /api/algorithms/closure`, `/implication`, `/keys`, `/minimal-cover`, `/check-nf`, `/decompose-3nf`; payload dùng `universe`, `dependencies[{left,right}]`, và `x`/`y` khi cần.
+- Frontend gọi các endpoint trên; khi API lỗi không chạy fallback JavaScript.
+- Hợp đồng JSON chi tiết: [ALGORITHM_API.md](ALGORITHM_API.md). Hướng dẫn chạy/tích hợp: [FRONTEND.md](FRONTEND.md).
+- Có test lý thuyết, API và `QuanLyDaoTaoTest`; lần chạy xác nhận ngày 29/10/2026: 12 test đạt với JDK 25. Dữ liệu thực tế cho kết quả 3 khóa ứng viên, dạng chuẩn cao nhất 1NF và 8 quan hệ 3NF mong đợi.

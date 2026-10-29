@@ -1,4 +1,4 @@
-/* Pure frontend demo functions. No network calls or Java backend integration. */
+/* Pure input helpers; production analysis is performed by the backend REST API. */
 (function (root) {
   'use strict';
   function attributes(text, label = 'Tập thuộc tính', allowEmpty = false) {

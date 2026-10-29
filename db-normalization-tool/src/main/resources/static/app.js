@@ -11,7 +11,7 @@ MaPhong -> ToaNha, SucChua
 MaSV, MaLHP -> Diem
 MaPhong, HocKy, Thu, TietBD -> MaLHP
 MaGV, HocKy, Thu, TietBD -> MaLHP`;
-let tool = 'closure', resultText = '', toastTimer;
+let tool = 'closure', resultText = '', toastTimer, analysisRequestVersion = 0;
 const fieldIds = ['attributes', 'dependencies', 'query-x', 'query-y'];
 let undoState = null;
 function saveUndo() {
@@ -38,6 +38,7 @@ function showPage(page) {
   $('breadcrumb').textContent = { workspace: 'Phân tích lược đồ', dataset: 'Dữ liệu & sơ đồ EER', guide: 'Hướng dẫn sử dụng' }[page];
 }
 function loadSample() {
+  analysisRequestVersion++;
   saveUndo();
   $('attributes').value = sampleU; $('dependencies').value = sampleF; $('query-x').value = 'MaSV'; $('query-y').value = 'TenKhoa';
   clearResult(); updateCounts(); showPage('workspace'); toast('Đã nạp dữ liệu mẫu: 21 thuộc tính, 10 phụ thuộc.');
@@ -45,7 +46,11 @@ function loadSample() {
 function showError(error, isImport = false) {
   clearResult();
   const message = error.message;
-  const field = /^U:/.test(message) ? 'attributes' : /^F[, :]/.test(message) ? 'dependencies' : /^X:/.test(message) ? 'query-x' : /^Y:/.test(message) ? 'query-y' : null;
+  const apiField = error.field || '';
+  const field = apiField === 'universe' || /^U:/.test(message) ? 'attributes'
+    : apiField.startsWith('dependencies') || /^F[, :]/.test(message) ? 'dependencies'
+      : apiField === 'x' || /^X:/.test(message) ? 'query-x'
+        : apiField === 'y' || /^Y:/.test(message) ? 'query-y' : null;
   if (isImport) {
     $('import-error').textContent = message; $('import-error').hidden = false; $('import').focus();
   } else if (field) {
@@ -55,46 +60,125 @@ function showError(error, isImport = false) {
   $('data-status').textContent = 'Cần kiểm tra lại dữ liệu';
 }
 function selectTool(value) {
+  analysisRequestVersion++;
   tool = value; clearResult();
   document.querySelectorAll('[data-tool]').forEach(button => { button.classList.toggle('selected', button.dataset.tool === tool); button.setAttribute('aria-pressed', String(button.dataset.tool === tool)); });
-  $('y-field').hidden = tool === 'closure';
-  $('x-label').textContent = tool === 'closure' ? 'Tập thuộc tính cần tính bao đóng (X)' : 'Vế trái của phụ thuộc cần kiểm tra (X)';
-  $('query-help').textContent = tool === 'closure' ? 'Tìm tất cả thuộc tính có thể suy ra từ X.' : 'Phụ thuộc X → Y đúng khi Y ⊆ X⁺.';
-  $('run').textContent = tool === 'closure' ? 'Tính bao đóng →' : 'Kiểm tra suy diễn →';
+  const settings = {
+    closure: { label: 'Tập thuộc tính cần tính bao đóng (X)', help: 'Tìm tất cả thuộc tính có thể suy ra từ X.', button: 'Tính bao đóng →', query: true, y: false },
+    implication: { label: 'Vế trái của phụ thuộc cần kiểm tra (X)', help: 'Phụ thuộc X → Y đúng khi Y ⊆ X⁺.', button: 'Kiểm tra suy diễn →', query: true, y: true },
+    keys: { label: '', help: 'Tìm tất cả khóa ứng viên của U theo tập phụ thuộc F.', button: 'Tìm tất cả khóa →', query: false, y: false },
+    'minimal-cover': { label: '', help: 'Tách vế phải, rút gọn vế trái và loại phụ thuộc dư thừa.', button: 'Tìm phủ tối thiểu →', query: false, y: false },
+    'check-nf': { label: '', help: 'Kiểm tra dạng chuẩn cao nhất theo giả định các giá trị nguyên tử.', button: 'Kiểm tra dạng chuẩn →', query: false, y: false },
+    'decompose-3nf': { label: '', help: 'Tổng hợp các quan hệ con từ phủ tối thiểu.', button: 'Phân rã 3NF →', query: false, y: false }
+  }[tool];
+  $('query-fields').hidden = !settings.query;
+  $('query-x-field').hidden = !settings.query;
+  $('y-field').hidden = !settings.y;
+  $('x-label').textContent = settings.label;
+  $('query-help').textContent = settings.help;
+  $('run').textContent = settings.button;
 }
-function appendStep(title, detail, values, number) {
-  const li = document.createElement('li'); li.dataset.step = number;
-  const strong = document.createElement('strong'); strong.textContent = title;
-  const p = document.createElement('p'); p.textContent = detail;
-  const snapshot = document.createElement('details');
-  const summary = document.createElement('summary'); summary.textContent = `Xem bao đóng sau bước này (${values.length} thuộc tính)`;
-  const content = document.createElement('p'); content.textContent = `X⁺ = ${setText(values)}`;
-  snapshot.append(summary, content);
-  li.append(strong, p, snapshot); $('steps').append(li);
+function appendStep(step) {
+  const li = document.createElement('li'); li.dataset.step = step.step;
+  const strong = document.createElement('strong'); strong.textContent = `${step.step}. ${step.action}`;
+  const p = document.createElement('p'); p.textContent = step.detail;
+  li.append(strong, p); $('steps').append(li);
 }
-function run() {
+function renderItems(items) {
+  $('result-attributes').replaceChildren();
+  items.forEach(value => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = value;
+    $('result-attributes').append(chip);
+  });
+}
+function renderAnalysis(result, universe, activeTool) {
+  let label, verdict, count, items = [], note;
+  if (activeTool === 'closure' || activeTool === 'implication') {
+    label = activeTool === 'closure' ? 'BAO ĐÓNG THUỘC TÍNH' : 'KẾT QUẢ SUY DIỄN';
+    count = `${result.closure.length} / ${universe.length} thuộc tính`;
+    verdict = activeTool === 'closure' ? `${setText(Relatio.attributes($('query-x').value, 'X', true))}⁺`
+      : (result.implied ? 'Suy ra được từ F' : 'Không suy ra được từ F');
+    items = result.closure;
+    note = activeTool === 'closure'
+      ? (result.closure.length === universe.length ? 'X⁺ = U: X là siêu khóa; cần kiểm tra tính tối tiểu để kết luận khóa ứng viên.' : 'X⁺ chưa bao phủ U: X không phải siêu khóa.')
+      : `${setText(Relatio.attributes($('query-x').value, 'X', true))} → ${setText(Relatio.attributes($('query-y').value, 'Y', true))}: ${result.implied ? 'mọi thuộc tính Y đều thuộc X⁺.' : 'có thuộc tính Y không thuộc X⁺.'}`;
+  } else if (activeTool === 'keys') {
+    label = 'KHÓA ỨNG VIÊN'; count = `${result.keys.length} khóa`;
+    verdict = result.keys.length ? `Tìm được ${result.keys.length} khóa ứng viên` : 'Không tìm thấy khóa ứng viên';
+    items = result.keys.map(setText);
+    note = `Nguồn: ${setText(result.source)} · Đích: ${setText(result.destination)} · Trung gian: ${setText(result.intermediate)}.`;
+  } else if (activeTool === 'minimal-cover') {
+    label = 'PHỦ TỐI THIỂU'; count = `${result.minimalCover.length} phụ thuộc`;
+    verdict = 'Phủ tối thiểu của F';
+    items = result.minimalCover.map(fd => `${setText(fd.left)} → ${setText(fd.right)}`);
+    note = 'Mỗi phụ thuộc có vế phải đơn thuộc tính.';
+  } else if (activeTool === 'check-nf') {
+    label = 'DẠNG CHUẨN'; count = `${result.violations.length} lý do vi phạm`;
+    verdict = `Dạng chuẩn cao nhất: ${result.highestNormalForm}`;
+    items = result.candidateKeys.map(key => `Khóa: ${setText(key)}`);
+    note = `Thuộc tính khóa: ${setText(result.primeAttributes)}. ${result.violations.map(v => `${v.normalForm}: ${v.dependency} — ${v.reason}`).join(' ') || 'Không có vi phạm.'}`;
+  } else {
+    label = 'PHÂN RÃ 3NF'; count = `${result.relations.length} quan hệ`;
+    verdict = 'Các quan hệ sau phân rã';
+    items = result.relations.map((relation, index) => `R${index + 1}(${relation.join(', ')})`);
+    note = 'Phân rã được tổng hợp từ phủ tối thiểu; xem từng bước để theo dõi quá trình tạo và rút gọn lược đồ.';
+  }
+  $('result-label').textContent = label;
+  $('result-count').textContent = count;
+  $('result-verdict').textContent = verdict;
+  $('closure-label').textContent = activeTool === 'closure' || activeTool === 'implication' ? 'Thuộc tính kết quả' : 'Kết quả';
+  renderItems(items);
+  $('result-note').textContent = note;
+  $('steps').replaceChildren();
+  result.steps.forEach(appendStep);
+  $('steps-details').open = true;
+  $('empty-result').hidden = true; $('result').hidden = false;
+  $('data-status').textContent = 'Dữ liệu hợp lệ · Đã phân tích từ backend';
+  resultText = `${verdict}\n${items.join('\n')}\n${note}\n\n${result.steps.map(step => `${step.step}. ${step.action}: ${step.detail}`).join('\n')}`;
+}
+async function run() {
+  const requestVersion = ++analysisRequestVersion;
+  const activeTool = tool;
+  const runButton = $('run');
+  const originalButtonText = runButton.textContent;
+  const toolButtons = [...document.querySelectorAll('[data-tool]')];
+  runButton.disabled = true;
+  runButton.textContent = 'Đang phân tích…';
+  toolButtons.forEach(button => { button.disabled = true; });
+  $('data-status').textContent = 'Đang gửi yêu cầu đến backend…';
   clearResult();
   try {
     const { universe, dependencies } = Relatio.parse($('attributes').value, $('dependencies').value);
-    const x = Relatio.attributes($('query-x').value, 'X', true); Relatio.checkSubset(x, universe, 'X');
-    const y = tool === 'implication' ? Relatio.attributes($('query-y').value, 'Y', true) : []; Relatio.checkSubset(y, universe, 'Y');
-    const answer = Relatio.closure(x, dependencies);
-    const missing = y.filter(value => !answer.closure.includes(value));
-    $('result-label').textContent = tool === 'closure' ? 'BAO ĐÓNG THUỘC TÍNH' : 'KẾT QUẢ SUY DIỄN';
-    $('result-count').textContent = `${answer.closure.length} / ${universe.length} thuộc tính`;
-    $('result-verdict').textContent = tool === 'closure' ? `${setText(x)}⁺` : (missing.length ? 'Không suy ra được từ F' : 'Suy ra được từ F');
-    $('result-attributes').replaceChildren();
-    answer.closure.forEach(value => { const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = value; $('result-attributes').append(chip); });
-    $('result-note').textContent = tool === 'implication'
-      ? `${setText(x)} → ${setText(y)}: ${missing.length ? `FALSE. ${setText(missing)} không nằm trong X⁺.` : 'TRUE. Mọi thuộc tính của Y đều nằm trong X⁺.'}`
-      : (answer.closure.length === universe.length ? 'X⁺ = U: X là một siêu khóa. Cần kiểm tra tính tối tiểu để kết luận X là khóa ứng viên.' : 'X⁺ chưa bao phủ U: X không phải siêu khóa.');
-    $('steps').replaceChildren();
-    $('steps-details').open = true;
-    appendStep('Khởi tạo', 'Bắt đầu với các thuộc tính của X.', x, 0);
-    answer.steps.forEach((step, index) => appendStep(`${setText(step.left)} → ${setText(step.right)}`, `Vế trái nằm trong bao đóng hiện tại. Thêm ${setText(step.added)}.`, step.closure, index + 1));
-    $('empty-result').hidden = true; $('result').hidden = false; $('data-status').textContent = 'Dữ liệu hợp lệ · Đã phân tích';
-    resultText = `${$('result-verdict').textContent}\nX+ = ${setText(answer.closure)}\n${$('result-note').textContent}\n\nKhởi tạo: ${setText(x)}\n${answer.steps.map((step, index) => `${index + 1}. ${setText(step.left)} → ${setText(step.right)}; thêm ${setText(step.added)}; X+ = ${setText(step.closure)}`).join('\n')}`;
-  } catch (error) { showError(error); }
+    const body = { universe, dependencies };
+    if (activeTool === 'closure' || activeTool === 'implication') {
+      body.x = Relatio.attributes($('query-x').value, 'X', true);
+      Relatio.checkSubset(body.x, universe, 'X');
+    }
+    if (activeTool === 'implication') {
+      body.y = Relatio.attributes($('query-y').value, 'Y', true);
+      Relatio.checkSubset(body.y, universe, 'Y');
+    }
+    const response = await fetch(`/api/algorithms/${activeTool}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const error = new Error(result.message || `Backend trả về HTTP ${response.status}.`);
+      error.field = result.field;
+      throw error;
+    }
+    if (requestVersion === analysisRequestVersion) renderAnalysis(result, universe, activeTool);
+  } catch (error) {
+    if (requestVersion === analysisRequestVersion) showError(error);
+  } finally {
+    runButton.disabled = false;
+    runButton.textContent = originalButtonText;
+    toolButtons.forEach(button => { button.disabled = false; });
+  }
 }
 function download(text, filename) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
@@ -103,19 +187,20 @@ function download(text, filename) {
 document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
 document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => selectTool(button.dataset.tool)));
 $('load-sample').addEventListener('click', loadSample); $('use-dataset').addEventListener('click', loadSample);
-$('reset').addEventListener('click', () => { saveUndo(); fieldIds.forEach(id => { $(id).value = ''; }); clearResult(); updateCounts(); $('attributes').focus(); });
+$('reset').addEventListener('click', () => { analysisRequestVersion++; saveUndo(); fieldIds.forEach(id => { $(id).value = ''; }); clearResult(); updateCounts(); $('attributes').focus(); });
 $('undo').addEventListener('click', () => {
   if (!undoState) return;
   undoState.values.forEach((value, index) => { $(fieldIds[index]).value = value; });
   selectTool(undoState.tool); undoState = null; $('undo-bar').hidden = true;
   updateCounts(); $('attributes').focus(); toast('Đã khôi phục dữ liệu. Bạn có thể chạy lại phân tích.');
 });
-['attributes', 'dependencies', 'query-x', 'query-y'].forEach(id => $(id).addEventListener('input', () => { clearResult(); updateCounts(); }));
+['attributes', 'dependencies', 'query-x', 'query-y'].forEach(id => $(id).addEventListener('input', () => { analysisRequestVersion++; clearResult(); updateCounts(); }));
 ['query-x', 'query-y'].forEach(id => $(id).addEventListener('keydown', event => { if (event.key === 'Enter') run(); }));
 $('run').addEventListener('click', run);
 $('import').addEventListener('click', () => $('file-input').click());
 $('file-input').addEventListener('change', async event => {
   const file = event.target.files[0]; if (!file) return;
+  analysisRequestVersion++;
   try {
     if (file.size > 1024 * 1024) throw new Error('Chọn file văn bản nhỏ hơn 1 MB.');
     const parsed = Relatio.parseFile(await file.text());

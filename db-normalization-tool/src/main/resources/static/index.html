@@ -48,8 +48,12 @@
               <div class="tool-tabs" role="group" aria-label="Công cụ phân tích">
                 <button class="tool-tab selected" data-tool="closure" aria-pressed="true"><span class="tool-symbol">X⁺</span><span>Bao đóng<small>Tìm tập thuộc tính suy ra</small></span><span class="radio-dot"></span></button>
                 <button class="tool-tab" data-tool="implication" aria-pressed="false"><span class="tool-symbol">→</span><span>Suy diễn<small>Kiểm tra phụ thuộc hàm</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="keys" aria-pressed="false"><span class="tool-symbol">K</span><span>Tìm khóa<small>Tất cả khóa ứng viên</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="minimal-cover" aria-pressed="false"><span class="tool-symbol">Fₘ</span><span>Phủ tối thiểu<small>Rút gọn tập phụ thuộc</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="check-nf" aria-pressed="false"><span class="tool-symbol">NF</span><span>Dạng chuẩn<small>Kiểm tra 1NF đến BCNF</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="decompose-3nf" aria-pressed="false"><span class="tool-symbol">3NF</span><span>Phân rã 3NF<small>Tổng hợp các quan hệ con</small></span><span class="radio-dot"></span></button>
               </div>
-              <div class="query-fields"><div><label id="x-label" for="query-x">Tập thuộc tính cần tính bao đóng (X)</label><input id="query-x" placeholder="Ví dụ: MaSV" spellcheck="false" aria-describedby="query-x-error"><p id="query-x-error" class="field-error" role="alert" hidden></p></div><div id="y-field" hidden><label for="query-y">Vế phải cần kiểm tra (Y)</label><input id="query-y" placeholder="Ví dụ: TenKhoa" spellcheck="false" aria-describedby="query-y-error"><p id="query-y-error" class="field-error" role="alert" hidden></p></div></div>
+              <div id="query-fields" class="query-fields"><div id="query-x-field"><label id="x-label" for="query-x">Tập thuộc tính cần tính bao đóng (X)</label><input id="query-x" placeholder="Ví dụ: MaSV" spellcheck="false" aria-describedby="query-x-error"><p id="query-x-error" class="field-error" role="alert" hidden></p></div><div id="y-field" hidden><label for="query-y">Vế phải cần kiểm tra (Y)</label><input id="query-y" placeholder="Ví dụ: TenKhoa" spellcheck="false" aria-describedby="query-y-error"><p id="query-y-error" class="field-error" role="alert" hidden></p></div></div>
               <div class="run-row"><span id="query-help" class="helper">Tìm tất cả thuộc tính có thể suy ra từ X.</span><button id="run" class="button primary">Tính bao đóng <span aria-hidden="true">→</span></button></div>
             </div>
           </section>
@@ -58,12 +62,12 @@
             <div id="error" class="error" role="alert" hidden></div>
             <div id="empty-result" class="empty-result"><div class="empty-symbol">{ X } <span>→</span> X⁺</div><h3>Mỗi kết quả đều có lời giải</h3><p>Nhập lược đồ, chọn công cụ và bắt đầu phân tích.<br>Các bước suy luận sẽ xuất hiện tại đây.</p><div class="empty-hint"><span>01 Nhập dữ liệu</span><b>→</b><span>02 Phân tích</span><b>→</b><span>03 Khám phá</span></div></div>
             <div id="result" class="panel-body" hidden aria-live="polite">
-              <div class="result-summary"><div class="result-top"><span id="result-label" class="tiny-label"></span><span id="result-count" class="count"></span></div><h3 id="result-verdict"></h3><h4 class="closure-label">Bao đóng X⁺</h4><div id="result-attributes" class="chips"></div><p id="result-note"></p></div>
+              <div class="result-summary"><div class="result-top"><span id="result-label" class="tiny-label"></span><span id="result-count" class="count"></span></div><h3 id="result-verdict"></h3><h4 id="closure-label" class="closure-label">Bao đóng X⁺</h4><div id="result-attributes" class="chips"></div><p id="result-note"></p></div>
               <div class="steps-heading"><h3>Lời giải chi tiết</h3><button id="copy-result" class="text-button">Sao chép kết quả</button></div>
               <details id="steps-details" class="steps-details" open><summary>Quá trình suy luận <span>Nhấn để mở / thu gọn</span></summary>
               <ol id="steps" class="steps"></ol>
               </details>
-              <div class="completion">✓ Đạt điểm cố định: không còn thuộc tính mới được thêm.</div>
+              <div id="completion" class="completion">✓ Hoàn tất phân tích từ API backend.</div>
             </div>
           </section>
         </div>
@@ -77,7 +81,7 @@
     </section>
     <section id="page-guide" hidden>
       <div class="page-heading"><div><p class="eyebrow">BẮT ĐẦU TẠI ĐÂY</p><h1>Từ lược đồ đến lời giải</h1><p>Ba bước để khám phá dữ liệu của bạn.</p></div></div>
-      <div class="panel panel-body prose"><h2>1. Chuẩn bị U và F</h2><p>Nhập tên thuộc tính cách nhau bằng dấu phẩy. Mỗi phụ thuộc hàm nằm trên một dòng, ví dụ <code>MaSV -> TenSV, MaNganh</code>. Tên không dấu, không chứa khoảng trắng và có phân biệt hoa thường.</p><p>Bạn có thể nạp dữ liệu mẫu hoặc nhập file .txt có dòng <code>U:</code> và dòng <code>F:</code>. Dòng trống và dòng bắt đầu bằng # được bỏ qua.</p><h2>2. Chọn phép phân tích</h2><p><strong>Bao đóng:</strong> nhập X để tìm X⁺ theo tập phụ thuộc F. <strong>Suy diễn:</strong> nhập X và Y để kiểm tra Y có nằm trong X⁺ hay không. Mọi thuộc tính cần nằm trong U. Để biểu diễn tập rỗng, nhập <code>∅</code>.</p><h2>3. Theo dõi từng bước</h2><p>Bắt đầu từ X, áp dụng phụ thuộc khi vế trái đã có trong bao đóng, thêm thuộc tính mới ở vế phải. Lặp đến khi không còn thay đổi. Kết quả hiển thị phụ thuộc được áp dụng, thuộc tính mới và bao đóng sau mỗi bước.</p><h2>Lưu dữ liệu</h2><p>Dữ liệu chỉ nằm trong phiên đang mở; hãy xuất file để lưu trước khi tải lại trang.</p></div>
+      <div class="panel panel-body prose"><h2>1. Chuẩn bị U và F</h2><p>Nhập tên thuộc tính cách nhau bằng dấu phẩy. Mỗi phụ thuộc hàm nằm trên một dòng, ví dụ <code>MaSV -> TenSV, MaNganh</code>. Tên không dấu, không chứa khoảng trắng và có phân biệt hoa thường.</p><p>Bạn có thể nạp dữ liệu mẫu hoặc nhập file .txt có dòng <code>U:</code> và dòng <code>F:</code>. Dòng trống và dòng bắt đầu bằng # được bỏ qua.</p><h2>2. Chọn phép phân tích</h2><p><strong>Bao đóng:</strong> nhập X để tìm X⁺ theo tập phụ thuộc F. <strong>Suy diễn:</strong> nhập X và Y để kiểm tra Y có nằm trong X⁺ hay không. Các công cụ khác tìm khóa, phủ tối thiểu, dạng chuẩn và phân rã 3NF. Mọi thuộc tính cần nằm trong U. Để biểu diễn tập rỗng, nhập <code>∅</code>.</p><h2>3. Theo dõi từng bước</h2><p>Kết quả được tính bởi backend Java và các bước giải nhận từ API. Nếu backend không chạy hoặc dữ liệu không hợp lệ, giao diện báo lỗi và không thay bằng kết quả minh họa.</p><h2>Lưu dữ liệu</h2><p>Dữ liệu chỉ nằm trong phiên đang mở; hãy xuất file để lưu trước khi tải lại trang.</p></div>
     </section>
     <footer class="page-footer"><span>N10 / DATABASE DESIGN LAB</span><span>Phân tích phụ thuộc hàm</span></footer>
   </main>
