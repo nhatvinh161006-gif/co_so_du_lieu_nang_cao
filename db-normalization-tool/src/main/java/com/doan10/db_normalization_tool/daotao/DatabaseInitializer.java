@@ -49,9 +49,11 @@ public class DatabaseInitializer {
             HocPhan hpCSDL201 = new HocPhan("CSDL201", "Cơ Sở Dữ Liệu Nâng Cao", 3, hpCSDL101); // CSDL101 là tiên quyết
             HocPhan hpCNPM101 = new HocPhan("CNPM101", "Công Nghệ Phần Mềm", 4);
             HocPhan hpTRR102  = new HocPhan("TRR102", "Toán Rời Rạc", 3);
+            HocPhan hpAI301   = new HocPhan("AI301", "Trí Tuệ Nhân Tạo", 3); // Môn học chưa mở lớp (phục vụ test IS EMPTY)
             em.persist(hpCSDL201);
             em.persist(hpCNPM101);
             em.persist(hpTRR102);
+            em.persist(hpAI301);
 
             // 3. Khởi tạo 3 giảng viên
             GiangVien gv1 = new GiangVien("TS. Tran Van B", "1980-05-12", "Nam", "GV001", "Tiến sĩ");
