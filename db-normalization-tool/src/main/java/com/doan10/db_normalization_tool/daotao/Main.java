@@ -88,16 +88,20 @@ public class Main {
                 em.close();
             }
 
-            // Bước 4: Thực thi bộ 5 truy vấn OQL / JPQL chuyên sâu (Task 3)
+            // Bước 4: Thực thi bộ 10 truy vấn OQL / JPQL chuyên sâu (Task 3)
             System.out.println();
             ObjectDbQueryDemo.runAllQueries(emf);
+
+            // Bước 5: Thực thi module lưu trữ lịch sử chuẩn hóa (Task 4)
+            System.out.println();
+            LichSuChuanHoaDemo.runHistoryDemo(emf);
 
         } finally {
             emf.close();
         }
 
         System.out.println("\n======================================================================");
-        System.out.println("  HOÀN THÀNH NGHIỆM THU TASK 2: KHỞI TẠO CSDL & TRANSACTION TEST!");
+        System.out.println("  HOÀN THÀNH NGHIỆM THU TẤT CẢ CÁC MODULE OBJECTDB (TASK 1 -> TASK 4)!");
         System.out.println("======================================================================");
     }
 }
