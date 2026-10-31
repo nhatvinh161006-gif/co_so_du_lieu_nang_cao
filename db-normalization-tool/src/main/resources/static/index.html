@@ -48,15 +48,22 @@
               <div class="tool-tabs" role="group" aria-label="Công cụ phân tích">
                 <button class="tool-tab selected" data-tool="closure" aria-pressed="true"><span class="tool-symbol">X⁺</span><span>Bao đóng<small>Tìm tập thuộc tính suy ra</small></span><span class="radio-dot"></span></button>
                 <button class="tool-tab" data-tool="implication" aria-pressed="false"><span class="tool-symbol">→</span><span>Suy diễn<small>Kiểm tra phụ thuộc hàm</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="keys" aria-pressed="false"><span class="tool-symbol">K</span><span>Tất cả khóa<small>Tìm các khóa ứng viên</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="superkeys" aria-pressed="false"><span class="tool-symbol">K⁺</span><span>Tất cả siêu khóa<small>Liệt kê các tập thuộc tính xác định U</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="minimal-cover" aria-pressed="false"><span class="tool-symbol">Fₘ</span><span>Phủ tối thiểu<small>Rút gọn tập phụ thuộc</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="normal-form" aria-pressed="false"><span class="tool-symbol">NF</span><span>Dạng chuẩn<small>Xác định dạng chuẩn cao nhất</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="decompose-3nf" aria-pressed="false"><span class="tool-symbol">3NF</span><span>Phân rã 3NF<small>Tổng hợp các quan hệ con</small></span><span class="radio-dot"></span></button>
+                <button class="tool-tab" data-tool="decompose-bcnf" aria-pressed="false"><span class="tool-symbol">BCNF</span><span>Phân rã BCNF<small>Phân rã theo phụ thuộc vi phạm BCNF</small></span><span class="radio-dot"></span></button>
               </div>
-              <div class="query-fields"><div><label id="x-label" for="query-x">Tập thuộc tính cần tính bao đóng (X)</label><input id="query-x" placeholder="Ví dụ: MaSV" spellcheck="false" aria-describedby="query-x-error"><p id="query-x-error" class="field-error" role="alert" hidden></p></div><div id="y-field" hidden><label for="query-y">Vế phải cần kiểm tra (Y)</label><input id="query-y" placeholder="Ví dụ: TenKhoa" spellcheck="false" aria-describedby="query-y-error"><p id="query-y-error" class="field-error" role="alert" hidden></p></div></div>
+              <div id="query-fields" class="query-fields"><div id="x-field"><label id="x-label" for="query-x">Tập thuộc tính cần tính bao đóng (X)</label><input id="query-x" placeholder="Ví dụ: MaSV" spellcheck="false" aria-describedby="query-x-error"><p id="query-x-error" class="field-error" role="alert" hidden></p></div><div id="y-field" hidden><label for="query-y">Vế phải cần kiểm tra (Y)</label><input id="query-y" placeholder="Ví dụ: TenKhoa" spellcheck="false" aria-describedby="query-y-error"><p id="query-y-error" class="field-error" role="alert" hidden></p></div></div>
               <div class="run-row"><span id="query-help" class="helper">Tìm tất cả thuộc tính có thể suy ra từ X.</span><button id="run" class="button primary">Tính bao đóng <span aria-hidden="true">→</span></button></div>
             </div>
           </section>
           <section class="panel result-panel" aria-labelledby="result-title">
-            <div class="panel-heading"><div><span class="section-number">03</span><h2 id="result-title">Công cụ học tập</h2></div><span class="learning-badge">Từng bước giải</span></div>
+            <div class="panel-heading"><div><span class="section-number">03</span><h2 id="result-title">Công cụ học tập</h2></div><span id="connection-status" class="learning-badge">Chế độ minh họa local</span></div>
             <div id="error" class="error" role="alert" hidden></div>
-            <div id="empty-result" class="empty-result"><div class="empty-symbol">{ X } <span>→</span> X⁺</div><h3>Mỗi kết quả đều có lời giải</h3><p>Nhập lược đồ, chọn công cụ và bắt đầu phân tích.<br>Các bước suy luận sẽ xuất hiện tại đây.</p><div class="empty-hint"><span>01 Nhập dữ liệu</span><b>→</b><span>02 Phân tích</span><b>→</b><span>03 Khám phá</span></div></div>
+            <div id="waiting-api" class="waiting-api" role="status" hidden><strong>Chưa kết nối backend</strong><p>Chức năng này đang chờ API từ backend.</p></div>
+            <div id="empty-result" class="empty-result"><div id="empty-symbol" class="empty-symbol">{ X } <span>→</span> X⁺</div><h3 id="empty-title">Mỗi kết quả đều có lời giải</h3><p id="empty-description">Nhập lược đồ, chọn công cụ và bắt đầu phân tích.<br>Các bước suy luận sẽ xuất hiện tại đây.</p><div class="empty-hint"><span>01 Nhập dữ liệu</span><b>→</b><span>02 Phân tích</span><b>→</b><span>03 Khám phá</span></div></div>
             <div id="result" class="panel-body" hidden aria-live="polite">
               <div class="result-summary"><div class="result-top"><span id="result-label" class="tiny-label"></span><span id="result-count" class="count"></span></div><h3 id="result-verdict"></h3><h4 class="closure-label">Bao đóng X⁺</h4><div id="result-attributes" class="chips"></div><p id="result-note"></p></div>
               <div class="steps-heading"><h3>Lời giải chi tiết</h3><button id="copy-result" class="text-button">Sao chép kết quả</button></div>
@@ -65,6 +72,27 @@
               </details>
               <div class="completion">✓ Đạt điểm cố định: không còn thuộc tính mới được thêm.</div>
             </div>
+            <div id="keys-result" class="panel-body prepared-result" hidden><h3>Danh sách khóa ứng viên</h3><div id="candidate-keys" class="result-list"></div></div>
+            <div id="superkeys-result" class="panel-body prepared-result" aria-live="polite" hidden>
+              <div class="result-top"><h3>Tất cả siêu khóa</h3><span id="superkeys-count" class="count"></span></div>
+              <p class="helper">Khóa ứng viên là siêu khóa tối tiểu; các siêu khóa khác có thể chứa thêm thuộc tính.</p>
+              <p id="superkeys-candidate-legend" class="helper" hidden></p>
+              <div id="superkeys-list" class="result-list"></div>
+              <p id="superkeys-warning" class="result-warning" role="status" hidden></p>
+              <details id="superkeys-evidence" class="steps-details" hidden><summary>Chứng cứ bao đóng và từng bước giải</summary><ol id="superkeys-steps" class="steps"></ol></details>
+            </div>
+            <div id="cover-result" class="panel-body prepared-result" hidden><h3>Danh sách phủ tối thiểu</h3><div id="minimal-cover-list" class="result-list"></div></div>
+            <div id="normal-form-result" class="panel-body prepared-result" hidden><h3>Dạng chuẩn cao nhất</h3><p id="normal-form-verdict"></p><ul id="normal-form-violations" class="result-list"></ul></div>
+            <div id="decomposition-result" class="panel-body prepared-result" hidden><h3>Các quan hệ con sau phân rã</h3><div id="decomposed-relations" class="result-list"></div></div>
+            <div id="bcnf-result" class="panel-body prepared-result" aria-live="polite" hidden>
+              <h3>Các quan hệ con sau phân rã BCNF</h3>
+              <div id="bcnf-relations" class="result-list"></div>
+              <div id="bcnf-violations" class="result-list"></div>
+              <p id="bcnf-lossless-result" hidden></p>
+              <p class="result-warning">Phân rã BCNF không phải lúc nào cũng bảo toàn mọi phụ thuộc. Chỉ hiển thị kết luận khi backend cung cấp dữ liệu.</p>
+              <details id="bcnf-steps" class="steps-details" hidden><summary>Các bước phân rã</summary><ol id="bcnf-steps-list" class="steps"></ol></details>
+            </div>
+            <details id="advanced-steps" class="panel-body steps-details prepared-result" hidden><summary>Từng bước giải <span>Nhấn để mở / thu gọn</span></summary><ol id="advanced-steps-list" class="steps"></ol></details>
           </section>
         </div>
       </div>

@@ -17,6 +17,50 @@ const closureCases = [
 test('Official file: 21 attributes and 10 dependencies, optional FD excluded', () => {
   assert.equal(data.universe.length, 21); assert.equal(data.dependencies.length, 10);
 });
+test('UI exposes eight unique tools with expected labels, fields and execution modes', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/app.js'), 'utf8');
+  assert.deepEqual(core.tools.map(tool => tool.id), ['closure', 'implication', 'keys', 'superkeys', 'minimal-cover', 'normal-form', 'decompose-3nf', 'decompose-bcnf']);
+  assert.deepEqual(core.tools.map(tool => tool.name), ['Bao đóng', 'Suy diễn', 'Tất cả khóa', 'Tất cả siêu khóa', 'Phủ tối thiểu', 'Dạng chuẩn', 'Phân rã 3NF', 'Phân rã BCNF']);
+  assert.ok(core.tools.every(tool => tool.name === tool.name.normalize('NFC') && !/[\u200B-\u200D\uFEFF]|\s{2,}/u.test(tool.name)));
+  assert.deepEqual(core.tools.map(tool => tool.buttonLabel), ['Tính bao đóng', 'Kiểm tra suy diễn', 'Tìm tất cả khóa', 'Tìm tất cả siêu khóa', 'Tìm phủ tối thiểu', 'Kiểm tra dạng chuẩn', 'Phân rã 3NF', 'Phân rã BCNF']);
+  assert.deepEqual(core.tools.map(tool => [tool.needsX, tool.needsY]), [[true, false], [true, true], [false, false], [false, false], [false, false], [false, false], [false, false], [false, false]]);
+  assert.deepEqual(core.tools.map(tool => tool.execution), ['local', 'local', 'backend', 'backend', 'backend', 'backend', 'backend', 'backend']);
+  const configuredIds = core.tools.map(tool => tool.id);
+  const htmlToolIds = [...html.matchAll(/data-tool="([^"]+)"/g)].map(match => match[1]);
+  assert.equal(new Set(configuredIds).size, 8);
+  assert.equal(new Set(htmlToolIds).size, 8);
+  assert.deepEqual(htmlToolIds, configuredIds);
+  assert.match(app, /query-fields'\)\.hidden = !config\.needsX && !config\.needsY/);
+  assert.match(app, /run'\)\.textContent = `\$\{config\.buttonLabel\}/);
+});
+test('Superkeys and BCNF decomposition are backend-only and have empty prepared result regions', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/index.html'), 'utf8');
+  for (const id of ['superkeys', 'decompose-bcnf']) {
+    const tool = core.toolById(id);
+    assert.deepEqual([tool.needsX, tool.needsY, tool.execution, tool.localHandler], [false, false, 'backend', undefined]);
+  }
+  assert.equal(core.toolById('superkeys').description, 'Liệt kê các tập thuộc tính xác định U');
+  assert.equal(core.toolById('decompose-bcnf').description, 'Phân rã theo phụ thuộc vi phạm BCNF');
+  for (const id of ['superkeys-result', 'superkeys-count', 'superkeys-list', 'superkeys-candidate-legend', 'superkeys-warning', 'superkeys-evidence', 'bcnf-result', 'bcnf-relations', 'bcnf-violations', 'bcnf-lossless-result', 'bcnf-steps']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /id="superkeys-list" class="result-list"><\/div>/);
+  assert.match(html, /id="bcnf-relations" class="result-list"><\/div>/);
+});
+test('HTML IDs are unique', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/index.html'), 'utf8');
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map(match => match[1]);
+  assert.equal(new Set(ids).size, ids.length);
+});
+test('Tools waiting for backend do not create local results or call an API', () => {
+  for (const tool of core.tools.filter(tool => tool.execution === 'backend')) assert.equal(tool.localHandler, undefined);
+  const app = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/app.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../src/main/resources/static/index.html'), 'utf8');
+  assert.match(html, /Chức năng này đang chờ API từ backend\./);
+  assert.match(app, /config\.execution === 'backend'/);
+  assert.doesNotMatch(app, /fetch\s*\(|XMLHttpRequest|axios/i);
+});
 for (const [x, expected] of closureCases) test(`Expected closure: ${x}`, () => {
   const result = core.closure(split(x), data.dependencies);
   assert.deepEqual(new Set(result.closure), new Set(split(expected)));

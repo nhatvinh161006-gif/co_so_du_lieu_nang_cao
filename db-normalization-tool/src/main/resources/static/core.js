@@ -1,6 +1,21 @@
 /* Pure frontend demo functions. No network calls or Java backend integration. */
 (function (root) {
   'use strict';
+  const tools = Object.freeze([
+    Object.freeze({ id: 'closure', name: 'Bao đóng', description: 'Tìm tập thuộc tính suy ra', buttonLabel: 'Tính bao đóng', needsX: true, needsY: false, execution: 'local' }),
+    Object.freeze({ id: 'implication', name: 'Suy diễn', description: 'Kiểm tra phụ thuộc hàm', buttonLabel: 'Kiểm tra suy diễn', needsX: true, needsY: true, execution: 'local' }),
+    Object.freeze({ id: 'keys', name: 'Tất cả khóa', description: 'Tìm các khóa ứng viên', buttonLabel: 'Tìm tất cả khóa', needsX: false, needsY: false, execution: 'backend' }),
+    Object.freeze({ id: 'superkeys', name: 'Tất cả siêu khóa', description: 'Liệt kê các tập thuộc tính xác định U', buttonLabel: 'Tìm tất cả siêu khóa', needsX: false, needsY: false, execution: 'backend' }),
+    Object.freeze({ id: 'minimal-cover', name: 'Phủ tối thiểu', description: 'Rút gọn tập phụ thuộc', buttonLabel: 'Tìm phủ tối thiểu', needsX: false, needsY: false, execution: 'backend' }),
+    Object.freeze({ id: 'normal-form', name: 'Dạng chuẩn', description: 'Xác định dạng chuẩn cao nhất', buttonLabel: 'Kiểm tra dạng chuẩn', needsX: false, needsY: false, execution: 'backend' }),
+    Object.freeze({ id: 'decompose-3nf', name: 'Phân rã 3NF', description: 'Tổng hợp các quan hệ con', buttonLabel: 'Phân rã 3NF', needsX: false, needsY: false, execution: 'backend' }),
+    Object.freeze({ id: 'decompose-bcnf', name: 'Phân rã BCNF', description: 'Phân rã theo phụ thuộc vi phạm BCNF', buttonLabel: 'Phân rã BCNF', needsX: false, needsY: false, execution: 'backend' })
+  ]);
+  function toolById(id) {
+    const selected = tools.find(item => item.id === id);
+    if (!selected) throw new Error(`Công cụ “${id}” không tồn tại.`);
+    return selected;
+  }
   function attributes(text, label = 'Tập thuộc tính', allowEmpty = false) {
     if (text.trim() === '∅' && allowEmpty) return [];
     if (!text.trim()) throw new Error(`${label}: hãy nhập thuộc tính${allowEmpty ? ' hoặc ∅ cho tập rỗng' : ''}.`);
@@ -65,7 +80,7 @@
     } while (changed);
     return { closure: [...known], steps };
   }
-  const api = { attributes, checkSubset, parse, parseFile, closure };
+  const api = { tools, toolById, attributes, checkSubset, parse, parseFile, closure };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Relatio = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -13,6 +13,7 @@ MaPhong, HocKy, Thu, TietBD -> MaLHP
 MaGV, HocKy, Thu, TietBD -> MaLHP`;
 let tool = 'closure', resultText = '', toastTimer;
 const fieldIds = ['attributes', 'dependencies', 'query-x', 'query-y'];
+const preparedResultIds = ['keys-result', 'superkeys-result', 'cover-result', 'normal-form-result', 'decomposition-result', 'bcnf-result', 'advanced-steps'];
 let undoState = null;
 function saveUndo() {
   if (!fieldIds.some(id => $(id).value.trim())) return;
@@ -25,7 +26,11 @@ function clearErrors() {
 }
 const setText = values => values.length ? `{ ${values.join(', ')} }` : '∅';
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500); }
-function clearResult() { $('result').hidden = true; $('empty-result').hidden = false; $('error').hidden = true; resultText = ''; clearErrors(); }
+function clearResult() {
+  $('result').hidden = true; $('empty-result').hidden = false; $('error').hidden = true; $('waiting-api').hidden = true;
+  preparedResultIds.forEach(id => { $(id).hidden = true; });
+  resultText = ''; clearErrors();
+}
 function updateCounts() {
   const u = $('attributes').value.trim();
   $('attribute-count').textContent = `${u ? u.split(',').filter(x => x.trim()).length : 0} thuộc tính`;
@@ -55,12 +60,24 @@ function showError(error, isImport = false) {
   $('data-status').textContent = 'Cần kiểm tra lại dữ liệu';
 }
 function selectTool(value) {
+  const config = Relatio.toolById(value);
   tool = value; clearResult();
   document.querySelectorAll('[data-tool]').forEach(button => { button.classList.toggle('selected', button.dataset.tool === tool); button.setAttribute('aria-pressed', String(button.dataset.tool === tool)); });
-  $('y-field').hidden = tool === 'closure';
+  $('query-fields').hidden = !config.needsX && !config.needsY;
+  $('x-field').hidden = !config.needsX;
+  $('y-field').hidden = !config.needsY;
   $('x-label').textContent = tool === 'closure' ? 'Tập thuộc tính cần tính bao đóng (X)' : 'Vế trái của phụ thuộc cần kiểm tra (X)';
-  $('query-help').textContent = tool === 'closure' ? 'Tìm tất cả thuộc tính có thể suy ra từ X.' : 'Phụ thuộc X → Y đúng khi Y ⊆ X⁺.';
-  $('run').textContent = tool === 'closure' ? 'Tính bao đóng →' : 'Kiểm tra suy diễn →';
+  $('query-help').textContent = config.execution === 'local'
+    ? (tool === 'closure' ? 'Tìm tất cả thuộc tính có thể suy ra từ X.' : 'Phụ thuộc X → Y đúng khi Y ⊆ X⁺.')
+    : 'Công cụ sử dụng U và F, hiện đang chờ API từ backend.';
+  $('run').textContent = `${config.buttonLabel} →`;
+  $('connection-status').textContent = config.execution === 'local' ? 'Chế độ minh họa local' : 'Chưa kết nối backend';
+  $('empty-symbol').classList.toggle('tool-name', config.execution === 'backend');
+  $('empty-symbol').textContent = config.execution === 'local' ? (tool === 'closure' ? '{ X } → X⁺' : 'X → Y ?') : config.name;
+  $('empty-title').textContent = config.execution === 'local' ? 'Mỗi kết quả đều có lời giải' : 'Khu vực kết quả đã sẵn sàng';
+  $('empty-description').textContent = config.execution === 'local'
+    ? 'Nhập lược đồ, chọn công cụ và bắt đầu phân tích. Các bước suy luận sẽ xuất hiện tại đây.'
+    : 'Công cụ sử dụng U và F. Kết quả sẽ chỉ xuất hiện sau khi có API thật từ backend.';
 }
 function appendStep(title, detail, values, number) {
   const li = document.createElement('li'); li.dataset.step = number;
@@ -76,6 +93,12 @@ function run() {
   clearResult();
   try {
     const { universe, dependencies } = Relatio.parse($('attributes').value, $('dependencies').value);
+    const config = Relatio.toolById(tool);
+    if (config.execution === 'backend') {
+      $('empty-result').hidden = true; $('waiting-api').hidden = false;
+      $('data-status').textContent = 'Dữ liệu hợp lệ · Đang chờ API backend';
+      return;
+    }
     const x = Relatio.attributes($('query-x').value, 'X', true); Relatio.checkSubset(x, universe, 'X');
     const y = tool === 'implication' ? Relatio.attributes($('query-y').value, 'Y', true) : []; Relatio.checkSubset(y, universe, 'Y');
     const answer = Relatio.closure(x, dependencies);

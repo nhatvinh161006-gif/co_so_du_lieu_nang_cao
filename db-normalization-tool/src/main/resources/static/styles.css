@@ -25,3 +25,15 @@ label,.button,.tool-tab,.steps-heading h3{font-size:13px}
 .steps li details{margin:6px 0;background:#f7f9f3;border-radius:4px;padding:7px 9px}
 .steps li details summary{cursor:pointer;font-size:12px;color:#526b44}
 @media(max-width:600px){.nav-item{font-size:12px;min-height:40px}.tool-tab small{font-size:12px}.tool-tabs{grid-template-columns:1fr}.tool-tab{padding:12px}.steps-heading{flex-wrap:wrap}.steps-details>summary span{display:block;margin-left:16px}.helper{font-size:12px}.file-actions{flex-wrap:wrap}.button{min-height:42px}}
+
+/* Analysis-tool workspace and prepared backend result states */
+.tool-tabs{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.waiting-api{margin:22px;padding:18px;border:1px solid #d9dfd5;background:#f7f8f4;color:#536158;border-radius:7px}
+.waiting-api strong{display:block;color:#344b3e;margin-bottom:5px}
+.waiting-api p{margin:0}
+.prepared-result h3{font-size:15px;margin:0 0 14px}
+.result-list{display:grid;gap:8px;margin:0;padding:0}
+.result-warning{margin:14px 0 0;padding:10px 12px;border-left:3px solid #8ba069;background:#f7f8f2;color:#596655;font-size:12px}
+.empty-symbol.tool-name{font-family:'Segoe UI',Arial,sans-serif;white-space:nowrap;word-break:keep-all;letter-spacing:normal}
+@media(max-width:1150px){.tool-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.tool-tabs{grid-template-columns:1fr}}
