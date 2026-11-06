@@ -31,7 +31,7 @@ class AlgorithmExamplesTest {
 
         assertEquals(Set.of("A", "B", "C"), result.baoDong());
         assertEquals(3, result.buocGiai().size());
-        assertTrue(result.buocGiai().getFirst().detail().contains("thêm"));
+        assertTrue(result.buocGiai().get(0).detail().contains("thêm"));
     }
 
     @Test
