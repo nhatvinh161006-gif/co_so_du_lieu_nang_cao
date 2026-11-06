@@ -33,9 +33,10 @@ function updateCounts() {
   $('data-status').textContent = u ? 'Dữ liệu sẽ được kiểm tra khi phân tích' : 'Sẵn sàng nhập dữ liệu';
 }
 function showPage(page) {
-  ['workspace', 'dataset', 'guide'].forEach(name => { $(`page-${name}`).hidden = name !== page; });
+  ['workspace', 'dataset', 'history', 'guide'].forEach(name => { const el = $(`page-${name}`); if (el) el.hidden = name !== page; });
   document.querySelectorAll('[data-page]').forEach(button => { button.classList.toggle('active', button.dataset.page === page); if (button.dataset.page === page) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
-  $('breadcrumb').textContent = { workspace: 'Phân tích lược đồ', dataset: 'Dữ liệu & sơ đồ EER', guide: 'Hướng dẫn sử dụng' }[page];
+  $('breadcrumb').textContent = { workspace: 'Phân tích lược đồ', dataset: 'Dữ liệu & sơ đồ EER', history: 'Lịch sử phân tích (ObjectDB)', guide: 'Hướng dẫn sử dụng' }[page];
+  if (page === 'history') loadHistory();
 }
 function loadSample() {
   analysisRequestVersion++;
@@ -171,7 +172,10 @@ async function run() {
       error.field = result.field;
       throw error;
     }
-    if (requestVersion === analysisRequestVersion) renderAnalysis(result, universe, activeTool);
+    if (requestVersion === analysisRequestVersion) {
+      renderAnalysis(result, universe, activeTool);
+      saveHistory(universe, dependencies, activeTool, resultText);
+    }
   } catch (error) {
     if (requestVersion === analysisRequestVersion) showError(error);
   } finally {
@@ -222,3 +226,114 @@ $('copy-result').addEventListener('click', async () => {
   catch { download(resultText, 'ket_qua.txt'); toast('Không truy cập được clipboard; đã tải kết quả thành file.'); }
 });
 showPage('workspace'); updateCounts();
+
+function saveHistory(universe, dependencies, activeTool, detail) {
+  const toolNames = {
+    closure: 'TINH_BAO_DONG',
+    implication: 'KIEM_TRA_SUY_DIEN',
+    keys: 'TIM_TAT_CA_KHOA',
+    'minimal-cover': 'PHU_TOI_TIEU',
+    'check-nf': 'KIEM_TRA_DANG_CHUAN',
+    'decompose-3nf': 'PHAN_RA_3NF'
+  };
+  const extraInput = activeTool === 'closure' ? `{${$('query-x').value.trim()}}⁺`
+    : (activeTool === 'implication' ? `${$('query-x').value.trim()} → ${$('query-y').value.trim()}` : '');
+  fetch('/api/history', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tapThuocTinhU: universe.join(', '),
+      tapPhuThuocHamF: dependencies.map(fd => `${fd.left.join(', ')} -> ${fd.right.join(', ')}`).join('\n'),
+      loaiThuatToan: toolNames[activeTool] || activeTool.toUpperCase(),
+      dauVaoBoSung: extraInput,
+      ketQuaChiTiet: detail,
+      thoiGianThucThiMs: 5,
+      thanhCong: true
+    })
+  }).catch(() => {});
+}
+
+async function loadHistory() {
+  const container = $('history-container');
+  const loading = $('history-loading');
+  const empty = $('history-empty');
+  if (!container) return;
+  container.replaceChildren();
+  loading.hidden = false;
+  empty.hidden = true;
+  try {
+    const res = await fetch('/api/history');
+    if (!res.ok) throw new Error('Không thể tải lịch sử');
+    const data = await res.json();
+    loading.hidden = true;
+    if (!Array.isArray(data) || data.length === 0) {
+      empty.hidden = false;
+      return;
+    }
+    data.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'history-card';
+
+      const header = document.createElement('div');
+      header.className = 'history-card-header';
+      header.innerHTML = `
+        <div class="history-title">
+          <span class="badge-oid">OID #${item.id}</span>
+          <strong>${item.loaiThuatToan || 'PHÂN TÍCH'}</strong>
+          <span class="badge-duration">${item.thoiGianThucThiMs || 0} ms</span>
+        </div>
+        <div class="badge-time">${item.thoiGianChay || ''}</div>
+      `;
+
+      const body = document.createElement('div');
+      body.className = 'history-card-body';
+      
+      const meta = document.createElement('div');
+      meta.className = 'history-meta';
+      meta.innerHTML = `
+        <div class="history-meta-item">
+          <strong>Tập thuộc tính U</strong>
+          <span>${item.tapThuocTinhU || '∅'}</span>
+        </div>
+        <div class="history-meta-item">
+          <strong>Phụ thuộc hàm F</strong>
+          <span>${item.tapPhuThuocHamF || '∅'}</span>
+        </div>
+        ${item.dauVaoBoSung ? `
+        <div class="history-meta-item">
+          <strong>Đầu vào phụ</strong>
+          <span>${item.dauVaoBoSung}</span>
+        </div>` : ''}
+      `;
+
+      const resultBox = document.createElement('div');
+      resultBox.className = 'history-result-box';
+      resultBox.textContent = item.ketQuaChiTiet || 'Không có chi tiết kết quả';
+
+      body.append(meta, resultBox);
+      card.append(header, body);
+      container.append(card);
+    });
+  } catch (err) {
+    loading.hidden = true;
+    empty.hidden = false;
+  }
+}
+
+async function clearHistory() {
+  if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử trong ObjectDB không?')) return;
+  try {
+    const res = await fetch('/api/history', { method: 'DELETE' });
+    if (res.ok) {
+      toast('Đã xóa sạch lịch sử trong ObjectDB.');
+      loadHistory();
+    } else {
+      toast('Không thể xóa lịch sử.');
+    }
+  } catch (err) {
+    toast('Lỗi khi gửi yêu cầu xóa.');
+  }
+}
+
+if ($('refresh-history')) $('refresh-history').addEventListener('click', loadHistory);
+if ($('clear-history')) $('clear-history').addEventListener('click', clearHistory);

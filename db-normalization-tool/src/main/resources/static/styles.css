@@ -25,3 +25,16 @@ label,.button,.tool-tab,.steps-heading h3{font-size:13px}
 .steps li details{margin:6px 0;background:#f7f9f3;border-radius:4px;padding:7px 9px}
 .steps li details summary{cursor:pointer;font-size:12px;color:#526b44}
 @media(max-width:600px){.nav-item{font-size:12px;min-height:40px}.tool-tab small{font-size:12px}.tool-tabs{grid-template-columns:1fr}.tool-tab{padding:12px}.steps-heading{flex-wrap:wrap}.steps-details>summary span{display:block;margin-left:16px}.helper{font-size:12px}.file-actions{flex-wrap:wrap}.button{min-height:42px}}
+
+/* History page styles (matches exact design system) */
+.history-card{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 3px #20352402}
+.history-card-header{padding:14px 20px;background:#fafbf8;border-bottom:1px solid #edf0e9;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.history-title{display:flex;align-items:center;gap:10px;font-weight:650;font-size:13px;color:#2c4036}
+.history-card-body{padding:18px 20px;font-size:12px;color:#45554d;display:grid;gap:10px}
+.history-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;background:#f8f9f6;padding:12px 14px;border-radius:6px;border:1px solid #edf0e9}
+.history-meta-item strong{display:block;color:#7a896e;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+.history-meta-item span{font-family:var(--mono);font-size:12px;color:#20322e;word-break:break-all}
+.history-result-box{background:#f4f7ec;border:1px solid #e2ebd8;padding:12px 15px;border-radius:6px;font-size:12px;line-height:1.7;color:#395232;white-space:pre-wrap;word-break:break-word}
+.badge-oid{background:#e8ede4;color:#465b4f;padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:11px;font-weight:600}
+.badge-time{font-size:11px;color:#7a896e}
+.badge-duration{background:#f1f4ec;color:#618147;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
