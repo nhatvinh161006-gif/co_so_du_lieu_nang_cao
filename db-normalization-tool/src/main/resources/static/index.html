@@ -15,6 +15,7 @@
   <nav aria-label="Điều hướng chính">
     <button class="nav-item active" data-page="workspace"><span aria-hidden="true">▦</span> Phân tích lược đồ</button>
     <button class="nav-item" data-page="dataset"><span aria-hidden="true">▤</span> Dữ liệu &amp; sơ đồ EER</button>
+    <button class="nav-item" data-page="simulation"><span aria-hidden="true">⚡</span> Nghiệp vụ &amp; Ràng buộc</button>
     <button class="nav-item" data-page="history"><span aria-hidden="true">⏱</span> Lịch sử (ObjectDB)</button>
     <button class="nav-item" data-page="guide"><span aria-hidden="true">▧</span> Hướng dẫn sử dụng</button>
   </nav>
@@ -79,6 +80,106 @@
       <div class="dataset-stats"><div class="panel"><strong>21</strong><span>Thuộc tính</span></div><div class="panel"><strong>10</strong><span>Phụ thuộc hàm</span></div><div class="panel"><strong>3</strong><span>Khóa ứng viên mong đợi</span></div></div>
       <div class="panel panel-body prose"><h2>Các giả định của bộ dữ liệu</h2><p>Mỗi lớp học phần có một lịch học đại diện, một phòng và một giảng viên. Mỗi sinh viên có một điểm cho mỗi lớp đã đăng ký. U là lược đồ tổng hợp dùng để phân tích, không phải một bảng vật lý duy nhất.</p><p>Phụ thuộc tùy chọn <code>MaSV, MaHP, HocKy → MaLHP</code> không nằm trong F chính.</p><a class="text-link" href="U_F.txt" download>Tải file U, F gốc ↓</a><h3>Khóa ứng viên mong đợi</h3><ul><li>MaSV, MaLHP</li><li>MaSV, MaGV, HocKy, Thu, TietBD</li><li>MaSV, MaPhong, HocKy, Thu, TietBD</li></ul><p class="helper">Kết quả tham khảo cho bộ dữ liệu mẫu, không phải kết quả của lược đồ đang nhập.</p></div>
       <figure class="panel eer"><figcaption><h2>Sơ đồ thực thể – liên kết mở rộng</h2><a href="eer.jpg" target="_blank" rel="noopener">Mở ảnh đầy đủ ↗</a></figcaption><img src="eer.jpg" alt="Sơ đồ EER quản lý đào tạo: Khoa, Ngành, Người chuyên biệt thành Sinh viên và Giảng viên, Học phần, Phòng học, Lớp học phần và liên kết Đăng ký có Điểm." loading="lazy"></figure>
+    </section>
+    <section id="page-simulation" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">CSDL NÂNG CAO &amp; TOÀN VẸN DỮ LIỆU</p>
+          <h1>Nghiệp vụ &amp; Ràng buộc CSDL</h1>
+          <p>Mô phỏng kiểm tra tiên quyết (Prerequisite), sĩ số phòng &amp; tính nguyên tử Transaction (Commit / Rollback) trên ObjectDB.</p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button id="sim-reset-btn" class="button subtle" title="Khôi phục lại dữ liệu mẫu gốc ban đầu"><span aria-hidden="true">↺</span> Đặt lại CSDL</button>
+          <button id="sim-refresh-btn" class="button secondary"><span aria-hidden="true">↻</span> Làm mới dữ liệu</button>
+        </div>
+      </div>
+      <div class="notice">
+        <span class="notice-icon" aria-hidden="true">i</span>
+        <p><strong>Cơ chế bảo vệ toàn vẹn:</strong> Khi sinh viên đăng ký môn học, Backend mở một Transaction trên ObjectDB để đối chiếu các ràng buộc nghiệp vụ (điều kiện môn tiên quyết, sĩ số phòng, trùng lịch). Nếu vi phạm, hệ thống tự động <strong>ROLLBACK</strong> toàn bộ giao dịch, đảm bảo tính nguyên tử (Atomicity) theo chuẩn ACID.</p>
+      </div>
+      <div class="simulation-grid">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-number">01</span>
+              <h2>Bảng Điều Khiển Giao Dịch Đăng Ký</h2>
+            </div>
+            <span class="learning-badge">ACID Atomicity</span>
+          </div>
+          <div class="panel-body">
+            <div style="margin-bottom:16px;">
+              <span class="tiny-label" style="display:block;margin-bottom:8px;color:#7a896e;">KỊCH BẢN KIỂM THỬ NHANH</span>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button id="quick-scenario-fail" class="button subtle" style="border-color:#ecc9ba;color:#9a492e;background:#fff9f7;">
+                  🧪 Kịch bản lỗi: SV004 → LHP01 (CSDL Nâng Cao)
+                </button>
+                <button id="quick-scenario-pass" class="button subtle" style="border-color:#c8dfc4;color:#295a32;background:#f6faf4;">
+                  ✓ Kịch bản hợp lệ: SV001 → LHP03 (Toán Rời Rạc)
+                </button>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+              <div>
+                <label for="sim-select-student">Chọn Sinh viên</label>
+                <select id="sim-select-student" class="sim-select">
+                  <option value="">-- Đang nạp danh sách SV... --</option>
+                </select>
+                <div id="sim-student-info" class="helper" style="margin-top:6px;"></div>
+              </div>
+              <div>
+                <label for="sim-select-course">Chọn Lớp học phần</label>
+                <select id="sim-select-course" class="sim-select">
+                  <option value="">-- Đang nạp danh sách LHP... --</option>
+                </select>
+                <div id="sim-course-info" class="helper" style="margin-top:6px;"></div>
+              </div>
+            </div>
+
+            <div class="run-row" style="margin-top:20px;">
+              <span class="helper">Giao dịch độc lập mô phỏng động cơ JPA/ObjectDB.</span>
+              <button id="sim-execute-btn" class="button primary">
+                ⚡ Thực thi Giao dịch (Transaction) <span aria-hidden="true">→</span>
+              </button>
+            </div>
+
+            <!-- Khung kết quả Transaction -->
+            <div id="sim-result-container" style="margin-top:22px;" hidden></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-number">02</span>
+              <h2 id="sim-tabs-heading">Trạng Thái Dữ Liệu ObjectDB</h2>
+            </div>
+            <span class="subtle-label">THỜI GIAN THỰC</span>
+          </div>
+          <div class="panel-body" style="padding:0;">
+            <div class="sim-tabs" role="tablist">
+              <button id="tab-btn-students" class="sim-tab active" role="tab" aria-selected="true">Sinh viên (5)</button>
+              <button id="tab-btn-courses" class="sim-tab" role="tab" aria-selected="false">Lớp học phần (5)</button>
+              <button id="tab-btn-queries" class="sim-tab" role="tab" aria-selected="false">10 Truy vấn OQL / JPQL</button>
+            </div>
+
+            <div id="tab-content-students" class="sim-tab-content">
+              <div id="sim-students-loading" style="text-align:center;color:#74817b;padding:30px;">Đang tải dữ liệu sinh viên...</div>
+              <div id="sim-students-list" style="display:grid;gap:12px;"></div>
+            </div>
+
+            <div id="tab-content-courses" class="sim-tab-content" hidden>
+              <div id="sim-courses-loading" style="text-align:center;color:#74817b;padding:30px;">Đang tải danh sách lớp học phần...</div>
+              <div id="sim-courses-list" style="display:grid;gap:12px;"></div>
+            </div>
+
+            <div id="tab-content-queries" class="sim-tab-content" hidden>
+              <div id="sim-queries-loading" style="text-align:center;color:#74817b;padding:30px;">Đang tải 10 truy vấn OQL / JPQL...</div>
+              <div id="sim-queries-list" style="display:grid;gap:14px;"></div>
+            </div>
+          </div>
+        </section>
+      </div>
     </section>
     <section id="page-history" hidden>
       <div class="page-heading">
