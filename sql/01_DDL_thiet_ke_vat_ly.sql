@@ -19,7 +19,7 @@ CREATE TABLE Khoa (
     TenKhoa     VARCHAR(100) NOT NULL UNIQUE,
     DiaChi      VARCHAR(200),
     DienThoai   VARCHAR(15),
-    CONSTRAINT chk_khoa_ma CHECK (MaKhoa ~ '^[A-Z0-9]+$')
+    CONSTRAINT chk_khoa_ma CHECK (RTRIM(MaKhoa) ~ '^[A-Z0-9]+$')
 );
 COMMENT ON TABLE  Khoa IS 'Bảng lưu thông tin các khoa trong trường';
 COMMENT ON COLUMN Khoa.MaKhoa IS 'Mã khoa - chỉ chứa chữ hoa và số';

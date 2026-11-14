@@ -12,6 +12,7 @@ SET search_path = qldt;
 CREATE OR REPLACE FUNCTION fn_TinhDiemTrungBinhTichLuy(p_MaSV CHAR(10))
 RETURNS NUMERIC(4,2)
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 DECLARE
     v_GPA NUMERIC(4,2);
@@ -45,6 +46,7 @@ CREATE OR REPLACE FUNCTION fn_KiemTraXungDotLichSV(
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 DECLARE
     v_HocKy   SMALLINT;
@@ -100,6 +102,7 @@ CREATE OR REPLACE PROCEDURE sp_DangKyHocPhan(
     OUT p_Message TEXT
 )
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 DECLARE
     v_SiSoHienTai INT;
@@ -176,6 +179,7 @@ RETURNS TABLE (
     SoTruotMon    BIGINT    -- < 5.0
 )
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 BEGIN
     RETURN QUERY

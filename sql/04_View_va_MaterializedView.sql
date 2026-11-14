@@ -90,7 +90,7 @@ WITH TongHopDiem AS (
         k.TenKhoa,
         SUM(hp.SoTC) FILTER (WHERE dk.Diem >= 4.0) AS SoTinChiTichLuy,
         ROUND(
-            SUM(dk.Diem * hp.SoTC) / NULLIF(SUM(hp.SoTC FILTER (WHERE dk.Diem IS NOT NULL)), 0),
+            SUM(dk.Diem * hp.SoTC) / NULLIF(SUM(hp.SoTC) FILTER (WHERE dk.Diem IS NOT NULL), 0),
             2
         ) AS GPA,
         COUNT(dk.MaLHP) AS TongSoMon

@@ -1,41 +1,48 @@
 -- ============================================================
 --  FILE 07: QUẢN LÝ GIAO DỊCH & ĐIỀU KHIỂN TƯƠNG TRANH
 --  Nhóm N10 - Quản lý Đào tạo Đại học
---  Database: PostgreSQL (ACID, Locks, Savepoints)
+--  Database: PostgreSQL (ACID, Locks, PL/pgSQL subtransactions)
 -- ============================================================
 SET search_path = qldt;
 
 -- ============================================================
--- KỊCH BẢN 1: GIAO DỊCH VỚI ĐIỂM LƯU (SAVEPOINT)
+-- KỊCH BẢN 1: ROLLBACK CỤC BỘ BẰNG TIỂU GIAO DỊCH PL/PGSQL
 -- Đăng ký gói môn học: Nếu 1 môn phụ bị lỗi, chỉ rollback môn đó
 -- chứ không hủy toàn bộ các môn đã đăng ký thành công
 -- ============================================================
 DO $$
 DECLARE
     v_SV CHAR(10) := 'SV2001004';
+    v_SoDong INT;
 BEGIN
     RAISE NOTICE 'Bắt đầu giao dịch đăng ký nhiều môn cho sinh viên %...', v_SV;
 
     -- Đăng ký môn 1 (Bắt buộc)
     INSERT INTO DangKy (MaSV, MaLHP, NgayDangKy)
-    VALUES (v_SV, 'LHP2401001', CURRENT_DATE);
-    RAISE NOTICE 'Đăng ký thành công môn chính LHP2401001.';
+    VALUES (v_SV, 'LHP2401001', CURRENT_DATE)
+    ON CONFLICT (MaSV, MaLHP) DO NOTHING;
+    GET DIAGNOSTICS v_SoDong = ROW_COUNT;
+    IF v_SoDong = 1 THEN
+        RAISE NOTICE 'Đăng ký thành công môn chính LHP2401001.';
+    ELSE
+        RAISE NOTICE 'Sinh viên đã đăng ký môn chính LHP2401001 từ trước.';
+    END IF;
 
-    -- Thiết lập điểm lưu (Savepoint) trước khi đăng ký môn tự chọn
-    SAVEPOINT sp_mon_tu_chon;
-
+    -- Khối EXCEPTION tạo tiểu giao dịch: nếu môn tự chọn lỗi, chỉ khối này rollback.
     BEGIN
         -- Thử đăng ký môn tự chọn (giả sử có thể gặp lỗi hết chỗ hoặc vi phạm)
         INSERT INTO DangKy (MaSV, MaLHP, NgayDangKy)
-        VALUES (v_SV, 'LHP2401002', CURRENT_DATE);
-        RAISE NOTICE 'Đăng ký thành công môn tự chọn LHP2401002.';
+        VALUES (v_SV, 'LHP2401002', CURRENT_DATE)
+        ON CONFLICT (MaSV, MaLHP) DO NOTHING;
+        GET DIAGNOSTICS v_SoDong = ROW_COUNT;
+        IF v_SoDong = 1 THEN
+            RAISE NOTICE 'Đăng ký thành công môn tự chọn LHP2401002.';
+        ELSE
+            RAISE NOTICE 'Sinh viên đã đăng ký môn tự chọn LHP2401002 từ trước.';
+        END IF;
     EXCEPTION WHEN OTHERS THEN
-        RAISE WARNING 'Lỗi khi đăng ký môn tự chọn: %. Rollback về Savepoint.', SQLERRM;
-        ROLLBACK TO SAVEPOINT sp_mon_tu_chon;
+        RAISE WARNING 'Lỗi khi đăng ký môn tự chọn: %. Đã rollback riêng thao tác này.', SQLERRM;
     END;
-
-    -- Giải phóng savepoint
-    RELEASE SAVEPOINT sp_mon_tu_chon;
 
     RAISE NOTICE 'Hoàn tất giao dịch đăng ký theo khối.';
 END;
@@ -55,6 +62,7 @@ CREATE OR REPLACE PROCEDURE sp_ChuyenLopHocPhan(
     OUT p_Message TEXT
 )
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 DECLARE
     v_SuccessReg BOOLEAN;
@@ -76,7 +84,7 @@ BEGIN
 
     -- BƯỚC 3: Nếu đăng ký lớp mới thất bại -> hoàn tác (Exception rollback)
     IF NOT v_SuccessReg THEN
-        p_Message := FORMAT('Chuyển lớp thất bại: %s. Đã giữ nguyên lớp cũ.', v_MsgReg);
+        p_Message := FORMAT('Chuyển lớp thất bại: %s Đã giữ nguyên lớp cũ.', v_MsgReg);
         -- Raise exception để rollback toàn bộ thay đổi (phục hồi lại lớp cũ)
         RAISE EXCEPTION '%', p_Message;
     ELSE

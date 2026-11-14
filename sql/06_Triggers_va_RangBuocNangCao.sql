@@ -28,14 +28,30 @@ COMMENT ON TABLE LichSuThayDoiDiem IS 'Bảng ghi vết kiểm toán (Audit Trai
 CREATE OR REPLACE FUNCTION fn_tg_KiemTraSiSoToiDa()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 DECLARE
     v_SiSoHienTai INT;
     v_SiSoToiDa   INT;
 BEGIN
+    -- Tuần tự hóa các lượt đăng ký cùng lớp, kể cả khi INSERT không gọi thủ tục.
     SELECT SiSoToiDa INTO v_SiSoToiDa
     FROM LopHocPhan
-    WHERE MaLHP = NEW.MaLHP;
+    WHERE MaLHP = NEW.MaLHP
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Lớp học phần % không tồn tại!', NEW.MaLHP;
+    END IF;
+
+    -- Cho phép ON CONFLICT xử lý đăng ký trùng, kể cả khi lớp đã đủ sĩ số.
+    IF EXISTS (
+        SELECT 1
+        FROM DangKy
+        WHERE MaSV = NEW.MaSV AND MaLHP = NEW.MaLHP
+    ) THEN
+        RETURN NEW;
+    END IF;
 
     SELECT COUNT(*) INTO v_SiSoHienTai
     FROM DangKy
@@ -65,6 +81,7 @@ EXECUTE FUNCTION fn_tg_KiemTraSiSoToiDa();
 CREATE OR REPLACE FUNCTION fn_tg_KiemTraLichLopHocPhan()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 DECLARE
     v_TietKT_New INT;
@@ -122,6 +139,7 @@ EXECUTE FUNCTION fn_tg_KiemTraLichLopHocPhan();
 CREATE OR REPLACE FUNCTION fn_tg_GhiLichSuSuaDiem()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = qldt, pg_temp
 AS $$
 BEGIN
     -- Chỉ ghi nhận nếu điểm thực sự có thay đổi

@@ -50,7 +50,7 @@ sql/
 ├── 04_View_va_MaterializedView.sql     # View chi tiết & Materialized View xếp hạng GPA
 ├── 05_Stored_Procedures_va_Functions.sql # Hàm tính GPA, kiểm tra trùng lịch, SP đăng ký
 ├── 06_Triggers_va_RangBuocNangCao.sql  # Trigger kiểm soát sĩ số, chống trùng giờ, Audit Log
-├── 07_Transactions_va_Concurrency.sql  # ACID, Savepoint, Locking, Chuyển lớp nguyên tử
+├── 07_Transactions_va_Concurrency.sql  # ACID, tiểu giao dịch, khóa, chuyển lớp nguyên tử
 └── README_ThietKeVatLy_va_SQLNangCao.md # Tài liệu hướng dẫn & giải trình kỹ thuật
 ```
 
@@ -75,11 +75,17 @@ sql/
 - Thủ tục `sp_DangKyHocPhan`:
   - Khóa bi quan `SELECT SiSoToiDa FROM LopHocPhan WHERE MaLHP = ... FOR UPDATE;` để giải quyết triệt để lỗi **Race Condition** khi nhiều sinh viên cùng nhấn đăng ký suất cuối cùng.
   - Tích hợp hàm `fn_KiemTraXungDotLichSV` để tự động ngăn chặn sinh viên đăng ký hai môn trùng giờ học.
+- Các function/procedure PL/pgSQL cố định `search_path` vào `qldt`, để lời gọi từ kết nối ứng dụng không phụ thuộc `search_path` của phiên.
+- Trigger sĩ số cũng khóa dòng lớp học phần trước khi đếm đăng ký, nên các lệnh `INSERT` trực tiếp được tuần tự hóa thay vì chỉ dựa vào thủ tục đăng ký.
 
 ### 4.4. Trigger ràng buộc toàn vẹn & Kiểm toán (Audit Logging)
 - `tg_KiemTraSiSoDangKy`: Ngăn chặn mọi lệnh `INSERT` vào bảng `DangKy` nếu sĩ số vượt ngưỡng.
 - `tg_KiemTraLichLopHocPhan`: Đảm bảo 1 phòng học hoặc 1 giảng viên không bao giờ tồn tại ở 2 lớp cùng tiết.
 - `tg_GhiLichSuSuaDiem`: Tự động ghi lại toàn bộ lịch sử ai đã sửa điểm, điểm cũ, điểm mới và mốc thời gian vào bảng `LichSuThayDoiDiem`.
+
+### 4.5. Giao dịch mẫu và rollback cục bộ
+- Trong khối `DO` của PostgreSQL không dùng trực tiếp các lệnh `SAVEPOINT`/`ROLLBACK TO SAVEPOINT`. Kịch bản đăng ký môn tự chọn trong file 07 dùng khối PL/pgSQL `BEGIN ... EXCEPTION` lồng nhau; đây là tiểu giao dịch, nên lỗi ở môn tự chọn chỉ rollback thao tác trong khối đó.
+- Kịch bản dùng `ON CONFLICT DO NOTHING` để có thể chạy lại mà không lỗi khi sinh viên đã đăng ký lớp từ lần chạy trước.
 
 ---
 

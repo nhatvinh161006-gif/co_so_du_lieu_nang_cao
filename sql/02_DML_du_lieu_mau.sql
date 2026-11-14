@@ -142,4 +142,4 @@ INSERT INTO DangKy (MaSV, MaLHP, NgayDangKy, Diem) VALUES
 ('SV2001015','LHP2401003','2024-08-26', 6.5),
 ('SV2001015','LHP2401010','2024-08-26', NULL);
 
-SELECT 'Dữ liệu mẫu đã nạp: 5 khoa, 7 ngành, 8 GV, 7 phòng, 10 HP, 10 LHP, 15 SV, 36 đăng ký.' AS ket_qua;
+SELECT 'Dữ liệu mẫu đã nạp: 5 khoa, 7 ngành, 8 GV, 7 phòng, 10 HP, 10 LHP, 15 SV, 37 đăng ký.' AS ket_qua;
