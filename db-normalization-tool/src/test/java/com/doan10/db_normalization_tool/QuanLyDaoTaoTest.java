@@ -3,15 +3,13 @@ package com.doan10.db_normalization_tool;
 import com.doan10.db_normalization_tool.algorithm.*;
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
+import java.math.BigInteger;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-class QuanLyDaoTaoTest {
+public class QuanLyDaoTaoTest {
     private static final Set<String> U = new LinkedHashSet<>(List.of(
             "MaSV", "TenSV", "NgaySinh", "MaNganh", "TenNganh", "MaKhoa", "TenKhoa",
             "MaHP", "TenHP", "SoTC", "MaLHP", "HocKy", "Thu", "TietBD", "MaGV",
@@ -85,18 +83,15 @@ class QuanLyDaoTaoTest {
         assertEquals("1NF", normalForm.dangChuanCaoNhat());
         assertEquals(8, decomposition.cacQuanHe().size());
         assertEquals(expectedRelations, Set.copyOf(decomposition.cacQuanHe()));
-        assertTrue(normalForm.buocGiai().size() > 0);
-        assertTrue(decomposition.buocGiai().size() > 0);
+        assertFalse(normalForm.buocGiai().isEmpty());
+        assertFalse(decomposition.buocGiai().isEmpty());
     }
 
     @Test
     void verifiesSuperkeysCountWithPrincipleOfInclusionExclusion() {
         var result = sieuKhoa.timTatCaSieuKhoa(U, F, 50);
 
-        // Đã chứng minh bằng toán học:
-        // 3 khóa: |K1|=2, |K2|=5, |K3|=5
-        // Tổng số siêu khóa chính xác = 573,440
-        assertEquals(java.math.BigInteger.valueOf(573440), result.tongSoSieuKhoa());
+        assertEquals(BigInteger.valueOf(573440), result.tongSoSieuKhoa());
         assertEquals(3, result.khoaUngVien().size());
         assertEquals(50, result.danhSachSieuKhoaMau().size());
         assertFalse(result.daLietKeHet());
@@ -129,7 +124,6 @@ class QuanLyDaoTaoTest {
         assertFalse(bcnfResult.cacQuanHe().isEmpty());
         assertFalse(bcnfResult.danhSachViPham().isEmpty());
         assertFalse(bcnfResult.buocGiai().isEmpty());
-        // Kiểm tra mọi quan hệ con sau khi phân rã BCNF đều đạt phép nối không mất mát
         List<Set<String>> bcnfRelations = bcnfResult.cacQuanHe().stream()
                 .map(PhanRaBcnfAlgorithm.QuanHeBcnf::thuocTinh)
                 .toList();
