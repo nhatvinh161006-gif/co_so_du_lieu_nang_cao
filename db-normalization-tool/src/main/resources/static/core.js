@@ -65,7 +65,21 @@
     } while (changed);
     return { closure: [...known], steps };
   }
-  const api = { attributes, checkSubset, parse, parseFile, closure };
+  function parseDependenciesOnly(f, universe) {
+    const dependencies = [];
+    f.split(/\r?\n/).forEach((raw, index) => {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) return;
+      const parts = line.split(/->|→/);
+      if (parts.length !== 2) throw new Error(`Dòng ${index + 1}: cần đúng một dấu -> giữa hai vế.`);
+      const left = attributes(parts[0], `Dòng ${index + 1}, vế trái`, true);
+      const right = attributes(parts[1], `Dòng ${index + 1}, vế phải`, true);
+      if (universe && universe.length) checkSubset([...left, ...right], universe, `Dòng ${index + 1}`);
+      dependencies.push({ left, right });
+    });
+    return dependencies;
+  }
+  const api = { attributes, checkSubset, parse, parseFile, parseDependenciesOnly, closure };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Relatio = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

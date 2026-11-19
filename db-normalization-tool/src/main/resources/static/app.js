@@ -11,82 +11,169 @@ MaPhong -> ToaNha, SucChua
 MaSV, MaLHP -> Diem
 MaPhong, HocKy, Thu, TietBD -> MaLHP
 MaGV, HocKy, Thu, TietBD -> MaLHP`;
+
 let tool = 'closure', resultText = '', toastTimer, analysisRequestVersion = 0;
-const fieldIds = ['attributes', 'dependencies', 'query-x', 'query-y'];
+const fieldIds = ['attributes', 'dependencies', 'query-x', 'query-y', 'dependencies2', 'custom-relations'];
 let undoState = null;
+
 function saveUndo() {
-  if (!fieldIds.some(id => $(id).value.trim())) return;
-  undoState = { values: fieldIds.map(id => $(id).value), tool };
-  $('undo-bar').hidden = false;
+  if (!fieldIds.some(id => $(id) && $(id).value.trim())) return;
+  undoState = { values: fieldIds.map(id => $(id) ? $(id).value : ''), tool };
+  if ($('undo-bar')) $('undo-bar').hidden = false;
 }
+
 function clearErrors() {
-  fieldIds.forEach(id => { $(id).removeAttribute('aria-invalid'); $(`${id}-error`).hidden = true; });
-  $('import-error').hidden = true;
+  fieldIds.forEach(id => {
+    const el = $(id);
+    if (el) {
+      el.removeAttribute('aria-invalid');
+      const err = $(`${id}-error`);
+      if (err) err.hidden = true;
+    }
+  });
+  if ($('import-error')) $('import-error').hidden = true;
 }
-const setText = values => values.length ? `{ ${values.join(', ')} }` : '∅';
-function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500); }
-function clearResult() { $('result').hidden = true; $('empty-result').hidden = false; $('error').hidden = true; resultText = ''; clearErrors(); }
+
+const setText = values => values && values.length ? `{ ${values.join(', ')} }` : '∅';
+
+function toast(message) {
+  const t = $('toast');
+  if (!t) return;
+  t.textContent = message;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+function clearResult() {
+  if ($('result')) $('result').hidden = true;
+  if ($('empty-result')) $('empty-result').hidden = false;
+  if ($('error')) $('error').hidden = true;
+  if ($('sql-ddl-box')) $('sql-ddl-box').style.display = 'none';
+  resultText = '';
+  clearErrors();
+}
+
 function updateCounts() {
-  const u = $('attributes').value.trim();
-  $('attribute-count').textContent = `${u ? u.split(',').filter(x => x.trim()).length : 0} thuộc tính`;
-  $('fd-count').textContent = `${$('dependencies').value.split(/\r?\n/).filter(x => x.trim() && !x.trim().startsWith('#')).length} phụ thuộc`;
-  $('data-status').textContent = u ? 'Dữ liệu sẽ được kiểm tra khi phân tích' : 'Sẵn sàng nhập dữ liệu';
+  const u = $('attributes') ? $('attributes').value.trim() : '';
+  const f = $('dependencies') ? $('dependencies').value : '';
+  if ($('attribute-count')) $('attribute-count').textContent = `${u ? u.split(',').filter(x => x.trim()).length : 0} thuộc tính`;
+  if ($('fd-count')) $('fd-count').textContent = `${f.split(/\r?\n/).filter(x => x.trim() && !x.trim().startsWith('#')).length} phụ thuộc`;
+  if ($('data-status')) $('data-status').textContent = u ? 'Dữ liệu sẽ được kiểm tra khi phân tích' : 'Sẵn sàng nhập dữ liệu';
 }
+
 function showPage(page) {
-  ['workspace', 'dataset', 'simulation', 'history', 'guide'].forEach(name => { const el = $(`page-${name}`); if (el) el.hidden = name !== page; });
-  document.querySelectorAll('[data-page]').forEach(button => { button.classList.toggle('active', button.dataset.page === page); if (button.dataset.page === page) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
-  $('breadcrumb').textContent = { workspace: 'Phân tích lược đồ', dataset: 'Dữ liệu & sơ đồ EER', simulation: 'Nghiệp vụ & Ràng buộc CSDL', history: 'Lịch sử phân tích (ObjectDB)', guide: 'Hướng dẫn sử dụng' }[page];
+  ['workspace', 'dataset', 'simulation', 'history', 'guide'].forEach(name => {
+    const el = $(`page-${name}`);
+    if (el) el.hidden = name !== page;
+  });
+  document.querySelectorAll('[data-page]').forEach(button => {
+    button.classList.toggle('active', button.dataset.page === page);
+    if (button.dataset.page === page) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  if ($('breadcrumb')) {
+    $('breadcrumb').textContent = {
+      workspace: 'Phân tích lược đồ',
+      dataset: 'Dữ liệu & sơ đồ EER',
+      simulation: 'Nghiệp vụ & Ràng buộc CSDL',
+      history: 'Lịch sử phân tích (ObjectDB)',
+      guide: 'Hướng dẫn sử dụng'
+    }[page] || 'Phân tích lược đồ';
+  }
   if (page === 'history') loadHistory();
   if (page === 'simulation') loadSimulationData();
 }
+
 function loadSample() {
   analysisRequestVersion++;
   saveUndo();
-  $('attributes').value = sampleU; $('dependencies').value = sampleF; $('query-x').value = 'MaSV'; $('query-y').value = 'TenKhoa';
-  clearResult(); updateCounts(); showPage('workspace'); toast('Đã nạp dữ liệu mẫu: 21 thuộc tính, 10 phụ thuộc.');
+  if ($('attributes')) $('attributes').value = sampleU;
+  if ($('dependencies')) $('dependencies').value = sampleF;
+  if ($('query-x')) $('query-x').value = 'MaSV';
+  if ($('query-y')) $('query-y').value = 'TenKhoa';
+  clearResult();
+  updateCounts();
+  showPage('workspace');
+  toast('Đã nạp dữ liệu mẫu: 21 thuộc tính, 10 phụ thuộc.');
 }
+
 function showError(error, isImport = false) {
   clearResult();
   const message = error.message;
   const apiField = error.field || '';
   const field = apiField === 'universe' || /^U:/.test(message) ? 'attributes'
-    : apiField.startsWith('dependencies') || /^F[, :]/.test(message) ? 'dependencies'
-      : apiField === 'x' || /^X:/.test(message) ? 'query-x'
-        : apiField === 'y' || /^Y:/.test(message) ? 'query-y' : null;
+    : apiField.startsWith('dependencies2') ? 'dependencies2'
+      : apiField.startsWith('dependencies') || /^F[, :]/.test(message) ? 'dependencies'
+        : apiField === 'x' || /^X:/.test(message) ? 'query-x'
+          : apiField === 'y' || /^Y:/.test(message) ? 'query-y' : null;
+
   if (isImport) {
-    $('import-error').textContent = message; $('import-error').hidden = false; $('import').focus();
-  } else if (field) {
-    $(`${field}-error`).textContent = message; $(`${field}-error`).hidden = false;
-    $(field).setAttribute('aria-invalid', 'true'); $(field).focus();
-  } else { $('error').textContent = message; $('error').hidden = false; }
-  $('data-status').textContent = 'Cần kiểm tra lại dữ liệu';
+    if ($('import-error')) { $('import-error').textContent = message; $('import-error').hidden = false; $('import').focus(); }
+  } else if (field && $(field)) {
+    const err = $(`${field}-error`);
+    if (err) { err.textContent = message; err.hidden = false; }
+    $(field).setAttribute('aria-invalid', 'true');
+    $(field).focus();
+  } else {
+    if ($('error')) { $('error').textContent = message; $('error').hidden = false; }
+  }
+  if ($('data-status')) $('data-status').textContent = 'Cần kiểm tra lại dữ liệu';
 }
+
 function selectTool(value) {
   analysisRequestVersion++;
-  tool = value; clearResult();
-  document.querySelectorAll('[data-tool]').forEach(button => { button.classList.toggle('selected', button.dataset.tool === tool); button.setAttribute('aria-pressed', String(button.dataset.tool === tool)); });
+  tool = value;
+  clearResult();
+
+  document.querySelectorAll('[data-tool]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.tool === tool);
+    button.setAttribute('aria-pressed', String(button.dataset.tool === tool));
+  });
+
   const settings = {
-    closure: { label: 'Tập thuộc tính cần tính bao đóng (X)', help: 'Tìm tất cả thuộc tính có thể suy ra từ X.', button: 'Tính bao đóng →', query: true, y: false },
-    implication: { label: 'Vế trái của phụ thuộc cần kiểm tra (X)', help: 'Phụ thuộc X → Y đúng khi Y ⊆ X⁺.', button: 'Kiểm tra suy diễn →', query: true, y: true },
-    keys: { label: '', help: 'Tìm tất cả khóa ứng viên của U theo tập phụ thuộc F.', button: 'Tìm tất cả khóa →', query: false, y: false },
-    'minimal-cover': { label: '', help: 'Tách vế phải, rút gọn vế trái và loại phụ thuộc dư thừa.', button: 'Tìm phủ tối thiểu →', query: false, y: false },
-    'check-nf': { label: '', help: 'Kiểm tra dạng chuẩn cao nhất theo giả định các giá trị nguyên tử.', button: 'Kiểm tra dạng chuẩn →', query: false, y: false },
-    'decompose-3nf': { label: '', help: 'Tổng hợp các quan hệ con từ phủ tối thiểu.', button: 'Phân rã 3NF →', query: false, y: false }
-  }[tool];
-  $('query-fields').hidden = !settings.query;
-  $('query-x-field').hidden = !settings.query;
-  $('y-field').hidden = !settings.y;
-  $('x-label').textContent = settings.label;
-  $('query-help').textContent = settings.help;
-  $('run').textContent = settings.button;
+    closure: { label: 'Tập thuộc tính cần tính bao đóng (X)', help: 'Tìm tất cả thuộc tính có thể suy ra từ X.', button: 'Tính bao đóng →', query: true, y: false, f2: false, rel: false, arm: false },
+    implication: { label: 'Vế trái của phụ thuộc cần kiểm tra (X)', help: 'Phụ thuộc X → Y đúng khi Y ⊆ X⁺.', button: 'Kiểm tra suy diễn →', query: true, y: true, f2: false, rel: false, arm: false },
+    keys: { label: '', help: 'Tìm tất cả khóa ứng viên của U theo tập phụ thuộc F.', button: 'Tìm tất cả khóa →', query: false, y: false, f2: false, rel: false, arm: false },
+    superkeys: { label: '', help: 'Tính chính xác tổng số siêu khóa bằng Nguyên lý Bù trừ (PIE) & liệt kê mẫu.', button: 'Tìm tất cả siêu khóa →', query: false, y: false, f2: false, rel: false, arm: false },
+    'minimal-cover': { label: '', help: 'Tách vế phải, rút gọn vế trái và loại phụ thuộc dư thừa.', button: 'Tìm phủ tối thiểu →', query: false, y: false, f2: false, rel: false, arm: false },
+    'check-nf': { label: '', help: 'Kiểm tra dạng chuẩn cao nhất theo giả định các giá trị nguyên tử (1NF..BCNF).', button: 'Kiểm tra dạng chuẩn →', query: false, y: false, f2: false, rel: false, arm: false },
+    'decompose-3nf': { label: '', help: 'Tổng hợp các quan hệ con từ phủ tối thiểu (bảo toàn PTH và lossless).', button: 'Phân rã 3NF →', query: false, y: false, f2: false, rel: false, arm: false },
+    'decompose-bcnf': { label: '', help: 'Tách nhị phân đệ quy đạt chuẩn BCNF và đảm bảo phép nối không mất mát thông tin.', button: 'Phân rã BCNF →', query: false, y: false, f2: false, rel: false, arm: false },
+    equivalence: { label: '', help: 'Kiểm tra hai tập phụ thuộc hàm F1 và F2 có tương đương hay không (F1 ≡ F2).', button: 'Kiểm tra tương đương →', query: false, y: false, f2: true, rel: false, arm: false },
+    chase: { label: '', help: 'Kiểm tra bảo toàn thông tin (Lossless Join) bằng phương pháp bảng Chase.', button: 'Chạy thuật toán Chase →', query: false, y: false, f2: false, rel: true, arm: false },
+    'check-preservation': { label: '', help: 'Kiểm tra xem phép phân rã có bảo toàn tất cả phụ thuộc hàm trong F hay không.', button: 'Kiểm tra bảo toàn PTH →', query: false, y: false, f2: false, rel: true, arm: false },
+    'full-analysis': { label: '', help: 'Phân tích toàn diện một chạm: Khóa, Siêu khóa, Dạng chuẩn, 3NF, BCNF, Chase, Bảo toàn PTH & Cảnh báo.', button: '⚡ Phân tích toàn diện →', query: false, y: false, f2: false, rel: false, arm: false },
+    'compare-3nf-bcnf': { label: '', help: 'Đối chiếu song song các tiêu chuẩn giữa phân rã 3NF và phân rã BCNF.', button: 'So sánh 3NF vs BCNF →', query: false, y: false, f2: false, rel: false, arm: false },
+    armstrong: { label: 'Tập tiền đề X', help: 'Minh họa và áp dụng hệ tiên đề Armstrong tương tác.', button: 'Áp dụng tiên đề →', query: true, y: true, f2: false, rel: false, arm: true },
+    benchmark: { label: '', help: 'Đo lường thời gian thực thi của các thuật toán với số lượng thuộc tính tăng dần (N = 5..20).', button: 'Đo hiệu năng thuật toán →', query: false, y: false, f2: false, rel: false, arm: false }
+  }[tool] || { label: '', help: '', button: 'Phân tích →', query: false, y: false, f2: false, rel: false, arm: false };
+
+  if ($('query-fields')) $('query-fields').hidden = !(settings.query || settings.f2 || settings.rel || settings.arm);
+  if ($('query-x-field')) $('query-x-field').hidden = !settings.query;
+  if ($('y-field')) $('y-field').hidden = !settings.y;
+  if ($('f2-field')) $('f2-field').hidden = !settings.f2;
+  if ($('relations-field')) $('relations-field').hidden = !settings.rel;
+  if ($('armstrong-field')) $('armstrong-field').hidden = !settings.arm;
+
+  if ($('x-label')) $('x-label').textContent = settings.label;
+  if ($('query-help')) $('query-help').textContent = settings.help;
+  if ($('run')) $('run').textContent = settings.button;
 }
+
 function appendStep(step) {
-  const li = document.createElement('li'); li.dataset.step = step.step;
-  const strong = document.createElement('strong'); strong.textContent = `${step.step}. ${step.action}`;
-  const p = document.createElement('p'); p.textContent = step.detail;
-  li.append(strong, p); $('steps').append(li);
+  const li = document.createElement('li');
+  li.dataset.step = step.step;
+  const strong = document.createElement('strong');
+  strong.textContent = `${step.step}. ${step.action}`;
+  const p = document.createElement('p');
+  p.textContent = step.detail;
+  li.append(strong, p);
+  if ($('steps')) $('steps').append(li);
 }
+
 function renderItems(items) {
+  if (!$('result-attributes')) return;
   $('result-attributes').replaceChildren();
   items.forEach(value => {
     const chip = document.createElement('span');
@@ -95,8 +182,10 @@ function renderItems(items) {
     $('result-attributes').append(chip);
   });
 }
+
 function renderAnalysis(result, universe, activeTool) {
   let label, verdict, count, items = [], note;
+
   if (activeTool === 'closure' || activeTool === 'implication') {
     label = activeTool === 'closure' ? 'BAO ĐÓNG THUỘC TÍNH' : 'KẾT QUẢ SUY DIỄN';
     count = `${result.closure.length} / ${universe.length} thuộc tính`;
@@ -106,76 +195,207 @@ function renderAnalysis(result, universe, activeTool) {
     note = activeTool === 'closure'
       ? (result.closure.length === universe.length ? 'X⁺ = U: X là siêu khóa; cần kiểm tra tính tối tiểu để kết luận khóa ứng viên.' : 'X⁺ chưa bao phủ U: X không phải siêu khóa.')
       : `${setText(Relatio.attributes($('query-x').value, 'X', true))} → ${setText(Relatio.attributes($('query-y').value, 'Y', true))}: ${result.implied ? 'mọi thuộc tính Y đều thuộc X⁺.' : 'có thuộc tính Y không thuộc X⁺.'}`;
+
   } else if (activeTool === 'keys') {
     label = 'KHÓA ỨNG VIÊN'; count = `${result.keys.length} khóa`;
     verdict = result.keys.length ? `Tìm được ${result.keys.length} khóa ứng viên` : 'Không tìm thấy khóa ứng viên';
     items = result.keys.map(setText);
     note = `Nguồn: ${setText(result.source)} · Đích: ${setText(result.destination)} · Trung gian: ${setText(result.intermediate)}.`;
+
+  } else if (activeTool === 'superkeys') {
+    label = 'TẤT CẢ SIÊU KHÓA (PIE)'; count = `${result.totalCount} siêu khóa`;
+    verdict = `Tổng cộng có ${result.totalCount} siêu khóa`;
+    items = (result.sampleSuperkeys || []).map(setText);
+    const distStr = result.countBySize ? Object.entries(result.countBySize).map(([k, v]) => `Kích thước ${k}: ${v}`).join(' · ') : '';
+    note = `Áp dụng Nguyên lý Bù trừ (Inclusion-Exclusion) trên ${result.candidateKeys ? result.candidateKeys.length : 0} khóa ứng viên. ${distStr}`;
+
   } else if (activeTool === 'minimal-cover') {
     label = 'PHỦ TỐI THIỂU'; count = `${result.minimalCover.length} phụ thuộc`;
     verdict = 'Phủ tối thiểu của F';
     items = result.minimalCover.map(fd => `${setText(fd.left)} → ${setText(fd.right)}`);
-    note = 'Mỗi phụ thuộc có vế phải đơn thuộc tính.';
+    note = 'Mỗi phụ thuộc có vế phải đơn thuộc tính, vế trái tối tiểu và không dư thừa.';
+
   } else if (activeTool === 'check-nf') {
     label = 'DẠNG CHUẨN'; count = `${result.violations.length} lý do vi phạm`;
     verdict = `Dạng chuẩn cao nhất: ${result.highestNormalForm}`;
     items = result.candidateKeys.map(key => `Khóa: ${setText(key)}`);
     note = `Thuộc tính khóa: ${setText(result.primeAttributes)}. ${result.violations.map(v => `${v.normalForm}: ${v.dependency} — ${v.reason}`).join(' ') || 'Không có vi phạm.'}`;
-  } else {
-    label = 'PHÂN RÃ 3NF'; count = `${result.relations.length} quan hệ`;
-    verdict = 'Các quan hệ sau phân rã';
+
+  } else if (activeTool === 'decompose-3nf') {
+    label = 'PHÂN RÃ 3NF'; count = `${result.relations.length} quan hệ con`;
+    verdict = 'Các quan hệ sau phân rã 3NF';
     items = result.relations.map((relation, index) => `R${index + 1}(${relation.join(', ')})`);
-    note = 'Phân rã được tổng hợp từ phủ tối thiểu; xem từng bước để theo dõi quá trình tạo và rút gọn lược đồ.';
+    note = 'Phân rã được tổng hợp từ phủ tối thiểu; đảm bảo bảo toàn phụ thuộc hàm và nối không mất mát thông tin.';
+
+  } else if (activeTool === 'decompose-bcnf') {
+    label = 'PHÂN RÃ BCNF'; count = `${result.relations.length} quan hệ con`;
+    verdict = `Phân rã thành công ${result.relations.length} lược đồ con đạt BCNF`;
+    items = result.relations.map(r => `${r.name}(${r.attributes.join(', ')}) [Khóa: ${r.candidateKeys.map(k => '{' + k.join(', ') + '}').join(', ')}]`);
+    note = `Số phụ thuộc vi phạm đã tách: ${result.violations ? result.violations.length : 0}. Phép phân rã BCNF đảm bảo tính chất Lossless Join.`;
+
+  } else if (activeTool === 'equivalence') {
+    label = 'KIỂM TRA TƯƠNG ĐƯƠNG'; count = result.equivalent ? 'TƯƠNG ĐƯƠNG' : 'KHÔNG TƯƠNG ĐƯƠNG';
+    verdict = result.equivalent ? 'Hai tập phụ thuộc hàm TƯƠNG ĐƯƠNG: F₁ ≡ F₂' : 'Hai tập phụ thuộc hàm KHÔNG TƯƠNG ĐƯƠNG: F₁ ≢ F₂';
+    items = [
+      `Chiều 1 (F₁ ⊨ F₂): ${result.f1ImpliesF2 ? '✓ Thỏa mãn' : '✗ Vi phạm'}`,
+      `Chiều 2 (F₂ ⊨ F₁): ${result.f2ImpliesF1 ? '✓ Thỏa mãn' : '✗ Vi phạm'}`
+    ];
+    note = result.equivalent
+      ? 'Mọi phụ thuộc trong F2 đều được suy ra từ F1 và mọi phụ thuộc trong F1 đều được suy ra từ F2.'
+      : 'Tồn tại ít nhất một phụ thuộc không thể suy diễn qua lại giữa hai tập F1 và F2.';
+
+  } else if (activeTool === 'chase') {
+    label = 'THUẬT TOÁN CHASE'; count = result.lossless ? 'LOSSLESS JOIN' : 'LOSSY JOIN';
+    verdict = result.lossless ? 'Phép phân rã ĐẢM BẢO NỐI KHÔNG MẤT MÁT THÔNG TIN' : 'Phép phân rã BỊ MẤT MÁT THÔNG TIN (Lossy Join)';
+    items = result.lossless
+      ? [`Hàng thỏa mãn: R${result.satisfyingRow} đã đạt toàn bộ ký hiệu phân biệt (a)`]
+      : ['Bảng Chase dừng cố định nhưng không có hàng nào đạt toàn bộ ký hiệu phân biệt (a)'];
+    note = `Bảng Chase gồm ${result.attributes ? result.attributes.length : 0} cột đã được đồng nhất qua các bước lặp phụ thuộc hàm.`;
+
+  } else if (activeTool === 'check-preservation') {
+    label = 'BẢO TOÀN PHỤ THUỘC'; count = result.preserved ? 'BẢO TOÀN 100%' : `MẤT ${result.lostDependencies.length} PTH`;
+    verdict = result.preserved ? 'Phép phân rã BẢO TOÀN TẤT CẢ PHỤ THUỘC HÀM' : `Phép phân rã KHÔNG BẢO TOÀN PHỤ THUỘC (Mất ${result.lostDependencies.length} PTH)`;
+    items = (result.details || []).map(d => `${setText(d.dependency.left)} → ${setText(d.dependency.right)}: ${d.preserved ? '✓ Bảo toàn' : '✗ Bị mất'}`);
+    note = result.preserved
+      ? 'Mọi ràng buộc nghiệp vụ trong F đều được kiểm tra cục bộ trên các quan hệ con mà không cần join.'
+      : `Các phụ thuộc bị mất: ${result.lostDependencies.map(fd => setText(fd.left) + ' → ' + setText(fd.right)).join(', ')}.`;
+
+  } else if (activeTool === 'full-analysis') {
+    label = 'PHÂN TÍCH TOÀN DIỆN'; count = `${result.decomposition3nf ? result.decomposition3nf.length : 0} bảng 3NF · ${result.decompositionBcnf ? result.decompositionBcnf.length : 0} bảng BCNF`;
+    verdict = `Dạng chuẩn: ${result.highestNormalForm} | Tổng siêu khóa: ${result.totalSuperkeys}`;
+    items = [
+      `Khóa ứng viên: ${(result.candidateKeys || []).map(setText).join(', ')}`,
+      `Phủ tối thiểu: ${result.minimalCover ? result.minimalCover.length : 0} phụ thuộc`,
+      `Phân rã 3NF: ${result.decomposition3nf ? result.decomposition3nf.length : 0} bảng (Lossless: ${result.lossless3nf ? '✓' : '✗'}, Bảo toàn: ${result.preserved3nf ? '✓' : '✗'})`,
+      `Phân rã BCNF: ${result.decompositionBcnf ? result.decompositionBcnf.length : 0} bảng (Lossless: ${result.losslessBcnf ? '✓' : '✗'}, Bảo toàn: ${result.preservedBcnf ? '✓' : '✗'})`
+    ];
+    note = result.warnings && result.warnings.length
+      ? `⚠️ Cảnh báo: ${result.warnings.join(' | ')}`
+      : '✓ Lược đồ chuẩn hóa đạt tính toàn vẹn cao, không phát hiện phụ thuộc tầm thường hay thuộc tính cô lập.';
+
+    if (result.sqlDdl && $('sql-ddl-box') && $('sql-ddl-content')) {
+      $('sql-ddl-content').textContent = result.sqlDdl;
+      $('sql-ddl-box').style.display = 'block';
+    }
+
+  } else if (activeTool === 'compare-3nf-bcnf') {
+    label = 'SO SÁNH 3NF VS BCNF'; count = `3NF (${result.relationsCount3nf} bảng) vs BCNF (${result.relationsCountBcnf} bảng)`;
+    verdict = 'Đối chiếu toàn diện giữa Phân rã 3NF và Phân rã BCNF';
+    items = [
+      `Số quan hệ con: 3NF = ${result.relationsCount3nf} | BCNF = ${result.relationsCountBcnf}`,
+      `Nối không mất mát: 3NF = ${result.lossless3nf ? '✓ Có' : '✗ Không'} | BCNF = ${result.losslessBcnf ? '✓ Có' : '✗ Không'}`,
+      `Bảo toàn phụ thuộc: 3NF = ${result.preserved3nf ? '✓ Có' : '✗ Không'} | BCNF = ${result.preservedBcnf ? '✓ Có' : '✗ Bị mất (' + result.lostDependenciesBcnf.length + ' PTH)'}`
+    ];
+    note = result.summary;
+
+  } else if (activeTool === 'armstrong') {
+    label = 'TIÊN ĐỀ ARMSTRONG'; count = result.valid ? 'HỢP LỆ' : 'KHÔNG THỎA MÃN';
+    verdict = result.valid ? `Suy diễn thành công: ${result.derivedDependency}` : 'Không thỏa mãn điều kiện tiên đề';
+    items = [result.axiomName, `Quy tắc: ${result.formula}`];
+    note = result.valid ? `Phụ thuộc hàm được chứng minh dựa trên ${result.axiomName}.` : 'Vui lòng kiểm tra lại điều kiện tập thuộc tính đầu vào.';
+
+  } else if (activeTool === 'benchmark') {
+    label = 'ĐÁNH GIÁ HIỆU NĂNG'; count = `${result.cacDiemThuNghiem ? result.cacDiemThuNghiem.length : 0} mốc thử nghiệm`;
+    verdict = 'Thời gian thực thi (ms) khi số thuộc tính tăng (N = 5..20)';
+    items = (result.cacDiemThuNghiem || []).map(p => `N=${p.soThuocTinh} attrs: Bao đóng=${p.baoDongMs.toFixed(2)}ms, Khóa=${p.timKhoaMs.toFixed(2)}ms, 3NF=${p.phanRa3nfMs.toFixed(2)}ms, BCNF=${p.phanRaBcnfMs.toFixed(2)}ms, Chase=${p.chaseMs.toFixed(2)}ms`);
+    note = result.nhanXetDoPhucTap;
   }
-  $('result-label').textContent = label;
-  $('result-count').textContent = count;
-  $('result-verdict').textContent = verdict;
-  $('closure-label').textContent = activeTool === 'closure' || activeTool === 'implication' ? 'Thuộc tính kết quả' : 'Kết quả';
+
+  if ($('result-label')) $('result-label').textContent = label;
+  if ($('result-count')) $('result-count').textContent = count;
+  if ($('result-verdict')) $('result-verdict').textContent = verdict;
+  if ($('closure-label')) $('closure-label').textContent = activeTool === 'closure' || activeTool === 'implication' ? 'Thuộc tính kết quả' : 'Kết quả phân tích';
   renderItems(items);
-  $('result-note').textContent = note;
-  $('steps').replaceChildren();
-  result.steps.forEach(appendStep);
-  $('steps-details').open = true;
-  $('empty-result').hidden = true; $('result').hidden = false;
-  $('data-status').textContent = 'Dữ liệu hợp lệ · Đã phân tích từ backend';
-  resultText = `${verdict}\n${items.join('\n')}\n${note}\n\n${result.steps.map(step => `${step.step}. ${step.action}: ${step.detail}`).join('\n')}`;
+  if ($('result-note')) $('result-note').textContent = note;
+
+  if ($('steps')) {
+    $('steps').replaceChildren();
+    (result.steps || result.allSteps || []).forEach(appendStep);
+  }
+  if ($('steps-details')) $('steps-details').open = true;
+  if ($('empty-result')) $('empty-result').hidden = true;
+  if ($('result')) $('result').hidden = false;
+  if ($('data-status')) $('data-status').textContent = 'Dữ liệu hợp lệ · Đã phân tích từ backend';
+
+  resultText = `${verdict}\n${items.join('\n')}\n${note}\n\n${(result.steps || result.allSteps || []).map(s => `${s.step}. ${s.action}: ${s.detail}`).join('\n')}`;
 }
+
 async function run() {
   const requestVersion = ++analysisRequestVersion;
   const activeTool = tool;
   const runButton = $('run');
   const originalButtonText = runButton.textContent;
   const toolButtons = [...document.querySelectorAll('[data-tool]')];
+
   runButton.disabled = true;
   runButton.textContent = 'Đang phân tích…';
   toolButtons.forEach(button => { button.disabled = true; });
-  $('data-status').textContent = 'Đang gửi yêu cầu đến backend…';
+  if ($('data-status')) $('data-status').textContent = 'Đang gửi yêu cầu đến backend…';
   clearResult();
+
   try {
-    const { universe, dependencies } = Relatio.parse($('attributes').value, $('dependencies').value);
-    const body = { universe, dependencies };
-    if (activeTool === 'closure' || activeTool === 'implication') {
-      body.x = Relatio.attributes($('query-x').value, 'X', true);
-      Relatio.checkSubset(body.x, universe, 'X');
+    let body = {};
+
+    if (activeTool === 'benchmark') {
+      body = {};
+    } else if (activeTool === 'armstrong') {
+      const xText = $('query-x') ? $('query-x').value.trim() : '';
+      const yText = $('query-y') ? $('query-y').value.trim() : '';
+      const zText = $('armstrong-z') ? $('armstrong-z').value.trim() : '';
+      const wText = $('armstrong-w') ? $('armstrong-w').value.trim() : '';
+      body = {
+        axiomType: $('axiom-select') ? $('axiom-select').value : 'reflexivity',
+        x: xText ? xText.split(',').map(s => s.trim()) : [],
+        y: yText ? yText.split(',').map(s => s.trim()) : [],
+        z: zText ? zText.split(',').map(s => s.trim()) : [],
+        w: wText ? wText.split(',').map(s => s.trim()) : []
+      };
+    } else {
+      const { universe, dependencies } = Relatio.parse($('attributes').value, $('dependencies').value);
+      body = { universe, dependencies };
+
+      if (activeTool === 'closure' || activeTool === 'implication') {
+        body.x = Relatio.attributes($('query-x').value, 'X', true);
+        Relatio.checkSubset(body.x, universe, 'X');
+      }
+      if (activeTool === 'implication') {
+        body.y = Relatio.attributes($('query-y').value, 'Y', true);
+        Relatio.checkSubset(body.y, universe, 'Y');
+      }
+      if (activeTool === 'equivalence') {
+        const f2Text = $('dependencies2') ? $('dependencies2').value : '';
+        if (!f2Text.trim()) throw new Error('Vui lòng nhập tập phụ thuộc hàm F2 để kiểm tra tương đương.');
+        body.dependencies2 = Relatio.parseDependenciesOnly(f2Text, universe);
+      }
+      if (activeTool === 'chase' || activeTool === 'check-preservation') {
+        const relText = $('custom-relations') ? $('custom-relations').value.trim() : '';
+        if (relText) {
+          // Parse e.g. (A, B), (B, C) or A, B ; B, C
+          body.relations = relText.split(/;|\)\s*,\s*\(|\)\s*\(/).map(chunk => {
+            const clean = chunk.replace(/[()]/g, '').trim();
+            return clean ? clean.split(',').map(s => s.trim()).filter(Boolean) : [];
+          }).filter(arr => arr.length > 0);
+        }
+      }
     }
-    if (activeTool === 'implication') {
-      body.y = Relatio.attributes($('query-y').value, 'Y', true);
-      Relatio.checkSubset(body.y, universe, 'Y');
-    }
+
     const response = await fetch(`/api/algorithms/${activeTool}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     const result = await response.json();
+
     if (!response.ok) {
       const error = new Error(result.message || `Backend trả về HTTP ${response.status}.`);
       error.field = result.field;
       throw error;
     }
+
     if (requestVersion === analysisRequestVersion) {
-      renderAnalysis(result, universe, activeTool);
-      saveHistory(universe, dependencies, activeTool, resultText);
+      const u = body.universe || [];
+      renderAnalysis(result, u, activeTool);
+      saveHistory(u, body.dependencies || [], activeTool, resultText);
     }
   } catch (error) {
     if (requestVersion === analysisRequestVersion) showError(error);
@@ -185,66 +405,190 @@ async function run() {
     toolButtons.forEach(button => { button.disabled = false; });
   }
 }
+
+async function generateSqlDdl() {
+  const u = $('attributes') ? $('attributes').value.trim() : '';
+  const f = $('dependencies') ? $('dependencies').value.trim() : '';
+  if (!u || !f) {
+    toast('Vui lòng nhập tập thuộc tính U và phụ thuộc hàm F trước!');
+    return;
+  }
+  const btn = $('btn-generate-ddl');
+  if (btn) btn.disabled = true;
+
+  try {
+    const { universe, dependencies } = Relatio.parse(u, f);
+    const res = await fetch('/api/algorithms/generate-ddl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ universe, dependencies })
+    });
+    if (!res.ok) throw new Error('Không thể sinh mã SQL');
+    const data = await res.json();
+
+    if ($('sql-ddl-box') && $('sql-ddl-content')) {
+      $('sql-ddl-content').textContent = data.sqlDdl;
+      $('sql-ddl-box').style.display = 'block';
+      $('empty-result').hidden = true;
+      $('result').hidden = false;
+      $('sql-ddl-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      toast('Đã sinh mã SQL DDL thành công từ cấu trúc chuẩn hóa!');
+    }
+  } catch (err) {
+    showError(err);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function download(text, filename) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
   const a = document.createElement('a'); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// Bắt sự kiện
 document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
 document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => selectTool(button.dataset.tool)));
-$('load-sample').addEventListener('click', loadSample); $('use-dataset').addEventListener('click', loadSample);
-$('reset').addEventListener('click', () => { analysisRequestVersion++; saveUndo(); fieldIds.forEach(id => { $(id).value = ''; }); clearResult(); updateCounts(); $('attributes').focus(); });
-$('undo').addEventListener('click', () => {
-  if (!undoState) return;
-  undoState.values.forEach((value, index) => { $(fieldIds[index]).value = value; });
-  selectTool(undoState.tool); undoState = null; $('undo-bar').hidden = true;
-  updateCounts(); $('attributes').focus(); toast('Đã khôi phục dữ liệu. Bạn có thể chạy lại phân tích.');
-});
-['attributes', 'dependencies', 'query-x', 'query-y'].forEach(id => $(id).addEventListener('input', () => { analysisRequestVersion++; clearResult(); updateCounts(); }));
-['query-x', 'query-y'].forEach(id => $(id).addEventListener('keydown', event => { if (event.key === 'Enter') run(); }));
-$('run').addEventListener('click', run);
-$('import').addEventListener('click', () => $('file-input').click());
-$('file-input').addEventListener('change', async event => {
-  const file = event.target.files[0]; if (!file) return;
-  analysisRequestVersion++;
-  try {
-    if (file.size > 1024 * 1024) throw new Error('Chọn file văn bản nhỏ hơn 1 MB.');
-    const parsed = Relatio.parseFile(await file.text());
+
+if ($('load-sample')) $('load-sample').addEventListener('click', loadSample);
+if ($('use-dataset')) $('use-dataset').addEventListener('click', loadSample);
+if ($('btn-generate-ddl')) $('btn-generate-ddl').addEventListener('click', generateSqlDdl);
+
+if ($('copy-sql-btn')) {
+  $('copy-sql-btn').addEventListener('click', async () => {
+    const content = $('sql-ddl-content') ? $('sql-ddl-content').textContent : '';
+    try {
+      await navigator.clipboard.writeText(content);
+      toast('Đã sao chép mã nguồn SQL DDL vào bộ nhớ tạm.');
+    } catch {
+      download(content, 'schema_ddl.sql');
+      toast('Đã tải mã SQL DDL thành file .sql');
+    }
+  });
+}
+
+if ($('reset')) {
+  $('reset').addEventListener('click', () => {
+    analysisRequestVersion++;
     saveUndo();
-    $('attributes').value = parsed.u; $('dependencies').value = parsed.f; $('query-x').value = ''; $('query-y').value = '';
-    clearResult(); updateCounts(); toast(`Đã nhập ${file.name}.`);
-  } catch (error) { showError(error, true); }
-  finally { event.target.value = ''; }
+    fieldIds.forEach(id => { if ($(id)) $(id).value = ''; });
+    clearResult();
+    updateCounts();
+    if ($('attributes')) $('attributes').focus();
+  });
+}
+
+if ($('undo')) {
+  $('undo').addEventListener('click', () => {
+    if (!undoState) return;
+    undoState.values.forEach((value, index) => { if ($(fieldIds[index])) $(fieldIds[index]).value = value; });
+    selectTool(undoState.tool);
+    undoState = null;
+    if ($('undo-bar')) $('undo-bar').hidden = true;
+    updateCounts();
+    if ($('attributes')) $('attributes').focus();
+    toast('Đã khôi phục dữ liệu.');
+  });
+}
+
+fieldIds.forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('input', () => { analysisRequestVersion++; clearResult(); updateCounts(); });
 });
-$('export').addEventListener('click', () => {
-  try {
-    const { universe, dependencies } = Relatio.parse($('attributes').value, $('dependencies').value);
-    download(`U: ${universe.join(', ')}\n\nF:\n${dependencies.map(fd => `${fd.left.join(', ') || '∅'} -> ${fd.right.join(', ') || '∅'}`).join('\n')}\n`, 'U_F.txt');
-    toast('Đã xuất bộ U, F hiện tại.');
-  } catch (error) { showError(error); }
+
+['query-x', 'query-y'].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('keydown', event => { if (event.key === 'Enter') run(); });
 });
-$('copy-result').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(resultText); toast('Đã sao chép kết quả.'); }
-  catch { download(resultText, 'ket_qua.txt'); toast('Không truy cập được clipboard; đã tải kết quả thành file.'); }
-});
-showPage('workspace'); updateCounts();
+
+if ($('run')) $('run').addEventListener('click', run);
+if ($('import')) $('import').addEventListener('click', () => $('file-input').click());
+
+if ($('file-input')) {
+  $('file-input').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    analysisRequestVersion++;
+    try {
+      if (file.size > 1024 * 1024) throw new Error('Chọn file văn bản nhỏ hơn 1 MB.');
+      const parsed = Relatio.parseFile(await file.text());
+      saveUndo();
+      if ($('attributes')) $('attributes').value = parsed.u;
+      if ($('dependencies')) $('dependencies').value = parsed.f;
+      if ($('query-x')) $('query-x').value = '';
+      if ($('query-y')) $('query-y').value = '';
+      clearResult();
+      updateCounts();
+      toast(`Đã nhập ${file.name}.`);
+    } catch (error) { showError(error, true); }
+    finally { event.target.value = ''; }
+  });
+}
+
+if ($('export')) {
+  $('export').addEventListener('click', () => {
+    try {
+      const { universe, dependencies } = Relatio.parse($('attributes').value, $('dependencies').value);
+      download(`U: ${universe.join(', ')}\n\nF:\n${dependencies.map(fd => `${fd.left.join(', ') || '∅'} -> ${fd.right.join(', ') || '∅'}`).join('\n')}\n`, 'U_F.txt');
+      toast('Đã xuất bộ U, F hiện tại.');
+    } catch (error) { showError(error); }
+  });
+}
+
+if ($('copy-result')) {
+  $('copy-result').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(resultText); toast('Đã sao chép kết quả.'); }
+    catch { download(resultText, 'ket_qua.txt'); toast('Đã tải kết quả thành file.'); }
+  });
+}
+
+// Dark Mode Toggle
+if ($('theme-toggle')) {
+  // Load saved theme
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    $('theme-toggle').textContent = '☀️ Chế độ sáng';
+  }
+
+  $('theme-toggle').addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    $('theme-toggle').textContent = isDark ? '☀️ Chế độ sáng' : '🌙 Chế độ tối';
+    toast(isDark ? 'Đã bật giao diện tối.' : 'Đã bật giao diện sáng.');
+  });
+}
 
 function saveHistory(universe, dependencies, activeTool, detail) {
   const toolNames = {
     closure: 'TINH_BAO_DONG',
     implication: 'KIEM_TRA_SUY_DIEN',
     keys: 'TIM_TAT_CA_KHOA',
+    superkeys: 'TIM_SIEU_KHOA_PIE',
     'minimal-cover': 'PHU_TOI_TIEU',
     'check-nf': 'KIEM_TRA_DANG_CHUAN',
-    'decompose-3nf': 'PHAN_RA_3NF'
+    'decompose-3nf': 'PHAN_RA_3NF',
+    'decompose-bcnf': 'PHAN_RA_BCNF',
+    equivalence: 'KIEM_TRA_TUONG_DUONG',
+    chase: 'THUAT_TOAN_CHASE',
+    'check-preservation': 'BAO_TOAN_PHU_THUOC',
+    'full-analysis': 'PHAN_TICH_TONG_HOP',
+    'compare-3nf-bcnf': 'SO_SANH_3NF_BCNF',
+    armstrong: 'TIEN_DE_ARMSTRONG',
+    benchmark: 'DANH_GIA_HIEU_NANG'
   };
+
   const extraInput = activeTool === 'closure' ? `{${$('query-x').value.trim()}}⁺`
-    : (activeTool === 'implication' ? `${$('query-x').value.trim()} → ${$('query-y').value.trim()}` : '');
+    : (activeTool === 'implication' ? `${$('query-x').value.trim()} → ${$('query-y').value.trim()}`
+      : (activeTool === 'equivalence' ? `F2: ${($('dependencies2') ? $('dependencies2').value : '').split('\n').length} PTH`
+        : (activeTool === 'armstrong' ? $('axiom-select').value : '')));
+
   fetch('/api/history', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       tapThuocTinhU: universe.join(', '),
-      tapPhuThuocHamF: dependencies.map(fd => `${fd.left.join(', ')} -> ${fd.right.join(', ')}`).join('\n'),
+      tapPhuThuocHamF: (dependencies || []).map(fd => `${fd.left.join(', ')} -> ${fd.right.join(', ')}`).join('\n'),
       loaiThuatToan: toolNames[activeTool] || activeTool.toUpperCase(),
       dauVaoBoSung: extraInput,
       ketQuaChiTiet: detail,
@@ -274,7 +618,6 @@ async function loadHistory() {
     data.forEach(item => {
       const card = document.createElement('div');
       card.className = 'history-card';
-
       const header = document.createElement('div');
       header.className = 'history-card-header';
       header.innerHTML = `
@@ -285,10 +628,8 @@ async function loadHistory() {
         </div>
         <div class="badge-time">${item.thoiGianChay || ''}</div>
       `;
-
       const body = document.createElement('div');
       body.className = 'history-card-body';
-      
       const meta = document.createElement('div');
       meta.className = 'history-meta';
       meta.innerHTML = `
@@ -306,11 +647,9 @@ async function loadHistory() {
           <span>${item.dauVaoBoSung}</span>
         </div>` : ''}
       `;
-
       const resultBox = document.createElement('div');
       resultBox.className = 'history-result-box';
       resultBox.textContent = item.ketQuaChiTiet || 'Không có chi tiết kết quả';
-
       body.append(meta, resultBox);
       card.append(header, body);
       container.append(card);
@@ -339,7 +678,6 @@ async function clearHistory() {
 if ($('refresh-history')) $('refresh-history').addEventListener('click', loadHistory);
 if ($('clear-history')) $('clear-history').addEventListener('click', clearHistory);
 
-
 /* ==========================================================================
    MODULE: MÔ PHỎNG NGHIỆP VỤ & RÀNG BUỘC TRANSACTION OBJECTDB
    ========================================================================== */
@@ -363,7 +701,7 @@ async function loadSimulationData() {
     ]);
 
     if (!resSv.ok) {
-      toast("Backend chưa nạp API mới (HTTP " + resSv.status + "). Bạn vui lòng khởi động lại (restart) Spring Boot terminal nhé!");
+      toast("Backend chưa nạp API mới (HTTP " + resSv.status + "). Bạn vui lòng khởi động lại Spring Boot nhé!");
       return;
     }
     if (resSv.ok) {
@@ -525,7 +863,6 @@ async function executeSimulation(maSV, maLHP) {
     toast('Vui lòng chọn đầy đủ Sinh viên và Lớp học phần!');
     return;
   }
-
   const btn = $('sim-execute-btn');
   const container = $('sim-result-container');
   if (btn) btn.disabled = true;
@@ -536,15 +873,13 @@ async function executeSimulation(maSV, maLHP) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ maSV, maLHP })
     });
-
     if (!res.ok) {
-      toast("Lỗi HTTP " + res.status + ": Backend chưa nạp Controller mới. Hãy khởi động lại Spring Boot trong terminal!");
+      toast("Lỗi HTTP " + res.status + ": Backend chưa nạp Controller. Hãy khởi động lại Spring Boot!");
       return;
     }
     const data = await res.json();
     renderSimulationResult(data);
 
-    // Tự động tải lại dữ liệu đối tượng sau giao dịch
     const [resSv, resHp] = await Promise.all([
       fetch('/api/simulation/students'),
       fetch('/api/simulation/courses')
@@ -559,7 +894,6 @@ async function executeSimulation(maSV, maLHP) {
       renderSimulationCourses(simCoursesCache);
       populateCourseDropdown(simCoursesCache);
     }
-
   } catch (err) {
     toast('Lỗi khi thực thi giao dịch: ' + err.message);
   } finally {
@@ -597,11 +931,9 @@ function renderSimulationResult(data) {
         </div>
         <span class="badge-oid" style="background:#fff;">Bản ghi: ${data.countBefore} → ${data.countAfter}</span>
       </div>
-      <p style="margin:6px 0 10px;font-size:13px;line-height:1.6;">
-        ${data.message}
-      </p>
-      <div style="background:#fff;padding:12px;border-radius:6px;font-family:var(--mono);font-size:11px;line-height:1.7;margin-bottom:10px;box-shadow:inset 0 1px 2px rgba(0,0,0,0.03);">
-        <strong style="display:block;margin-bottom:4px;color:#526958;font-family:inherit;">QUÁ TRÌNH THỰC THI GIAO DỊCH (TRANSACTION TRACE):</strong>
+      <p style="margin:6px 0 10px;font-size:13px;line-height:1.6;">${data.message}</p>
+      <div style="background:#fff;padding:12px;border-radius:6px;font-family:var(--mono);font-size:11px;line-height:1.7;margin-bottom:10px;">
+        <strong style="display:block;margin-bottom:4px;color:#526958;">QUÁ TRÌNH THỰC THI GIAO DỊCH (TRANSACTION TRACE):</strong>
         ${stepsHtml}
       </div>
       <div style="font-size:12px;line-height:1.6;opacity:.92;">
@@ -609,11 +941,9 @@ function renderSimulationResult(data) {
       </div>
     </div>
   `;
-
   container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Bắt sự kiện trên trang Simulation
 if ($('sim-select-student')) $('sim-select-student').addEventListener('change', updateStudentInfo);
 if ($('sim-select-course')) $('sim-select-course').addEventListener('change', updateCourseInfo);
 
@@ -667,7 +997,6 @@ if ($('sim-refresh-btn')) {
   });
 }
 
-// Tabs chuyển đổi
 function setupSimTabs() {
   const tabs = [
     { btn: 'tab-btn-students', content: 'tab-content-students' },
@@ -692,3 +1021,8 @@ function setupSimTabs() {
   });
 }
 setupSimTabs();
+
+// Khởi động trang mặc định
+showPage('workspace');
+updateCounts();
+selectTool('closure');

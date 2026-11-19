@@ -1,9 +1,6 @@
 package com.doan10.db_normalization_tool;
 
-import com.doan10.db_normalization_tool.algorithm.BaoDongAlgorithm;
-import com.doan10.db_normalization_tool.algorithm.ChuanHoaAlgorithm;
-import com.doan10.db_normalization_tool.algorithm.PhuToiThieuAlgorithm;
-import com.doan10.db_normalization_tool.algorithm.TimKhoaAlgorithm;
+import com.doan10.db_normalization_tool.algorithm.*;
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
 import org.junit.jupiter.api.Test;
 
@@ -12,8 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class QuanLyDaoTaoTest {
     private static final Set<String> U = new LinkedHashSet<>(List.of(
@@ -38,6 +34,10 @@ class QuanLyDaoTaoTest {
     private final PhuToiThieuAlgorithm phuToiThieu = new PhuToiThieuAlgorithm(baoDong);
     private final ChuanHoaAlgorithm chuanHoa =
             new ChuanHoaAlgorithm(baoDong, timKhoa, phuToiThieu);
+    private final SieuKhoaAlgorithm sieuKhoa = new SieuKhoaAlgorithm(timKhoa);
+    private final ChaseAlgorithm chase = new ChaseAlgorithm();
+    private final BaoToanPhuThuocAlgorithm baoToan = new BaoToanPhuThuocAlgorithm(baoDong);
+    private final PhanRaBcnfAlgorithm phanRaBcnf = new PhanRaBcnfAlgorithm(baoDong, timKhoa);
 
     @Test
     void findsExpectedCandidateKeysAndStepTrace() {
@@ -87,6 +87,54 @@ class QuanLyDaoTaoTest {
         assertEquals(expectedRelations, Set.copyOf(decomposition.cacQuanHe()));
         assertTrue(normalForm.buocGiai().size() > 0);
         assertTrue(decomposition.buocGiai().size() > 0);
+    }
+
+    @Test
+    void verifiesSuperkeysCountWithPrincipleOfInclusionExclusion() {
+        var result = sieuKhoa.timTatCaSieuKhoa(U, F, 50);
+
+        // Đã chứng minh bằng toán học:
+        // 3 khóa: |K1|=2, |K2|=5, |K3|=5
+        // Tổng số siêu khóa chính xác = 573,440
+        assertEquals(java.math.BigInteger.valueOf(573440), result.tongSoSieuKhoa());
+        assertEquals(3, result.khoaUngVien().size());
+        assertEquals(50, result.danhSachSieuKhoaMau().size());
+        assertFalse(result.daLietKeHet());
+    }
+
+    @Test
+    void verifiesChaseAlgorithmConfirmsLosslessJoinFor3nfDecomposition() {
+        var decomposition = chuanHoa.phanRa3NF(U, F);
+        var chaseResult = chase.kiemTraLosslessJoin(U, decomposition.cacQuanHe(), F);
+
+        assertTrue(chaseResult.baoToanThongTin(), "Phân rã 3NF của quản lý đào tạo phải nối không mất mát thông tin");
+        assertNotNull(chaseResult.hangThoaManToanA());
+        assertFalse(chaseResult.buocGiai().isEmpty());
+    }
+
+    @Test
+    void verifiesDependencyPreservationFor3nfDecomposition() {
+        var decomposition = chuanHoa.phanRa3NF(U, F);
+        var presResult = baoToan.kiemTraBaoToan(decomposition.cacQuanHe(), F);
+
+        assertTrue(presResult.baoToanTatCa(), "Phân rã 3NF của quản lý đào tạo phải bảo toàn tất cả 10 phụ thuộc hàm");
+        assertTrue(presResult.phuThuocBiMat().isEmpty());
+        assertEquals(10, presResult.danhSachChiTiet().size());
+    }
+
+    @Test
+    void verifiesBcnfDecompositionForQuanLyDaoTao() {
+        var bcnfResult = phanRaBcnf.phanRaBcnf(U, F);
+
+        assertFalse(bcnfResult.cacQuanHe().isEmpty());
+        assertFalse(bcnfResult.danhSachViPham().isEmpty());
+        assertFalse(bcnfResult.buocGiai().isEmpty());
+        // Kiểm tra mọi quan hệ con sau khi phân rã BCNF đều đạt phép nối không mất mát
+        List<Set<String>> bcnfRelations = bcnfResult.cacQuanHe().stream()
+                .map(PhanRaBcnfAlgorithm.QuanHeBcnf::thuocTinh)
+                .toList();
+        var chaseBcnf = chase.kiemTraLosslessJoin(U, bcnfRelations, F);
+        assertTrue(chaseBcnf.baoToanThongTin(), "Phân rã BCNF phải luôn đảm bảo phép nối không mất mát");
     }
 
     private static PhuThuocHam fd(String left, String... right) {

@@ -117,4 +117,103 @@ class AlgorithmControllerTest {
                 .andExpect(jsonPath("$.relations.length()").value(2))
                 .andExpect(jsonPath("$.steps.length()").isNotEmpty());
     }
+
+    @Test
+    void exposesHighPriorityEndpoints() throws Exception {
+        // 1. Tương đương
+        mockMvc.perform(post("/api/algorithms/equivalence")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "dependencies": [
+                                    {"left": ["A"], "right": ["B"]},
+                                    {"left": ["B"], "right": ["C"]}
+                                  ],
+                                  "dependencies2": [
+                                    {"left": ["A"], "right": ["B"]},
+                                    {"left": ["B"], "right": ["C"]},
+                                    {"left": ["A"], "right": ["C"]}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.equivalent").value(true))
+                .andExpect(jsonPath("$.steps.length()").isNotEmpty());
+
+        // 2. Siêu khóa
+        mockMvc.perform(post("/api/algorithms/superkeys")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "universe": ["A", "B", "C"],
+                                  "dependencies": [
+                                    {"left": ["A"], "right": ["B"]},
+                                    {"left": ["B"], "right": ["A"]}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidateKeys.length()").value(2))
+                .andExpect(jsonPath("$.totalCount").value("3"))
+                .andExpect(jsonPath("$.sampleSuperkeys.length()").value(3))
+                .andExpect(jsonPath("$.steps.length()").isNotEmpty());
+
+        // 3. Phân rã BCNF
+        mockMvc.perform(post("/api/algorithms/decompose-bcnf")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "universe": ["A", "B", "C"],
+                                  "dependencies": [
+                                    {"left": ["A"], "right": ["B"]},
+                                    {"left": ["B"], "right": ["C"]}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.relations.length()").value(2))
+                .andExpect(jsonPath("$.violations.length()").value(1))
+                .andExpect(jsonPath("$.steps.length()").isNotEmpty());
+
+        // 4. Chase Lossless Join
+        mockMvc.perform(post("/api/algorithms/chase")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "universe": ["A", "B", "C"],
+                                  "dependencies": [
+                                    {"left": ["A"], "right": ["B"]}
+                                  ],
+                                  "relations": [
+                                    ["A", "B"],
+                                    ["A", "C"]
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lossless").value(true))
+                .andExpect(jsonPath("$.satisfyingRow").isNotEmpty())
+                .andExpect(jsonPath("$.steps.length()").isNotEmpty());
+
+        // 5. Bảo toàn phụ thuộc
+        mockMvc.perform(post("/api/algorithms/check-preservation")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "universe": ["A", "B", "C"],
+                                  "dependencies": [
+                                    {"left": ["A"], "right": ["B"]},
+                                    {"left": ["B"], "right": ["C"]}
+                                  ],
+                                  "relations": [
+                                    ["A", "B"],
+                                    ["B", "C"]
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preserved").value(true))
+                .andExpect(jsonPath("$.lostDependencies.length()").value(0))
+                .andExpect(jsonPath("$.steps.length()").isNotEmpty());
+    }
 }
