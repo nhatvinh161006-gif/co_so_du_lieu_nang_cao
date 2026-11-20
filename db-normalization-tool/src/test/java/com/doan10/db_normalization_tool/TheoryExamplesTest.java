@@ -4,7 +4,6 @@ import com.doan10.db_normalization_tool.algorithm.BaoDongAlgorithm;
 import com.doan10.db_normalization_tool.algorithm.ChuanHoaAlgorithm;
 import com.doan10.db_normalization_tool.algorithm.PhuToiThieuAlgorithm;
 import com.doan10.db_normalization_tool.algorithm.TimKhoaAlgorithm;
-import com.doan10.db_normalization_tool.dto.*;
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,11 +39,10 @@ public class TheoryExamplesTest {
                 new PhuThuocHam(Set.of("D"), Set.of("E"))
         );
 
-        KeyResponse keyResp = timKhoaAlgorithm.timTatCaKhoa(u, f);
-        assertEquals(1, keyResp.getKeys().size());
-        assertEquals(Set.of("A", "B"), keyResp.getKeys().get(0));
-        assertEquals(Set.of("A", "B"), keyResp.getPrimeAttributes());
-        assertEquals(Set.of("C", "D", "E"), keyResp.getNonPrimeAttributes());
+        var keyResp = timKhoaAlgorithm.timTatCaKhoa(u, f);
+        assertEquals(1, keyResp.khoaUngVien().size());
+        assertEquals(Set.of("A", "B"), keyResp.khoaUngVien().get(0));
+        assertEquals(Set.of("A", "B"), keyResp.tapNguon());
     }
 
     @Test
@@ -62,11 +60,11 @@ public class TheoryExamplesTest {
                 new PhuThuocHam(Set.of("A", "B"), Set.of("D"))
         );
 
-        MinimalCoverResponse resp = phuToiThieuAlgorithm.timPhuToiThieu(f);
-        List<PhuThuocHamDTO> minCover = resp.getMinimalCover();
+        var resp = phuToiThieuAlgorithm.timPhuToiThieu(f);
+        var minCover = resp.phuToiThieu();
 
         assertEquals(3, minCover.size());
-        assertFalse(resp.getSteps().isEmpty());
+        assertFalse(resp.buocGiai().isEmpty());
     }
 
     @Test
@@ -75,9 +73,7 @@ public class TheoryExamplesTest {
         // R(A, B, C, D) với F = {AB -> C, C -> D, D -> B}
         // Khóa: {A, B}, {A, C}, {A, D}
         // Prime: A, B, C, D -> Mọi thuộc tính đều là thuộc tính khóa!
-        // 2NF: Đạt (không có thuộc tính không khóa)
-        // 3NF: Đạt (mọi vế phải đều là thuộc tính khóa)
-        // BCNF: Không đạt vì C -> D (C không phải siêu khóa)
+        // Dạng chuẩn cao nhất: 3NF (không đạt BCNF vì C -> D không có C là siêu khóa)
         Set<String> u = Set.of("A", "B", "C", "D");
         List<PhuThuocHam> f = List.of(
                 new PhuThuocHam(Set.of("A", "B"), Set.of("C")),
@@ -85,11 +81,9 @@ public class TheoryExamplesTest {
                 new PhuThuocHam(Set.of("D"), Set.of("B"))
         );
 
-        NormalFormResponse nfResp = chuanHoaAlgorithm.kiemTraDangChuan(u, f);
-        assertTrue(nfResp.isIs2NF());
-        assertTrue(nfResp.isIs3NF());
-        assertFalse(nfResp.isIsBCNF());
-        assertEquals("3NF", nfResp.getHighestNormalForm());
+        var nfResp = chuanHoaAlgorithm.kiemTraDangChuan(u, f, true);
+        assertEquals("3NF", nfResp.dangChuanCaoNhat());
+        assertEquals(Set.of("A", "B", "C", "D"), nfResp.thuocTinhKhoa());
     }
 
     @Test
@@ -102,8 +96,8 @@ public class TheoryExamplesTest {
                 new PhuThuocHam(Set.of("C"), Set.of("D"))
         );
 
-        DecompositionResponse decompResp = chuanHoaAlgorithm.phanRa3NF(u, f);
-        List<Set<String>> schemas = decompResp.getSubSchemas();
+        var decompResp = chuanHoaAlgorithm.phanRa3NF(u, f);
+        var schemas = decompResp.cacQuanHe();
 
         assertNotNull(schemas);
         assertFalse(schemas.isEmpty());

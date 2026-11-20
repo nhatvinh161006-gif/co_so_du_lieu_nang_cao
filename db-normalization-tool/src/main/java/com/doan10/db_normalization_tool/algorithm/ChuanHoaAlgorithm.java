@@ -1,285 +1,203 @@
 package com.doan10.db_normalization_tool.algorithm;
 
-import com.doan10.db_normalization_tool.dto.*;
+import com.doan10.db_normalization_tool.algorithm.PhuToiThieuAlgorithm.KetQuaPhuToiThieu;
+import com.doan10.db_normalization_tool.algorithm.TimKhoaAlgorithm.KetQuaTimKhoa;
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.doan10.db_normalization_tool.model.StepLog;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ChuanHoaAlgorithm {
+    private final BaoDongAlgorithm baoDongAlgorithm;
+    private final TimKhoaAlgorithm timKhoaAlgorithm;
+    private final PhuToiThieuAlgorithm phuToiThieuAlgorithm;
 
-    @Autowired
-    private BaoDongAlgorithm baoDongAlgorithm;
-
-    @Autowired
-    private TimKhoaAlgorithm timKhoaAlgorithm;
-
-    @Autowired
-    private PhuToiThieuAlgorithm phuToiThieuAlgorithm;
-
-    public ChuanHoaAlgorithm() {}
-
-    public ChuanHoaAlgorithm(BaoDongAlgorithm baoDongAlgorithm, TimKhoaAlgorithm timKhoaAlgorithm, PhuToiThieuAlgorithm phuToiThieuAlgorithm) {
+    public ChuanHoaAlgorithm(
+            BaoDongAlgorithm baoDongAlgorithm,
+            TimKhoaAlgorithm timKhoaAlgorithm,
+            PhuToiThieuAlgorithm phuToiThieuAlgorithm) {
         this.baoDongAlgorithm = baoDongAlgorithm;
         this.timKhoaAlgorithm = timKhoaAlgorithm;
         this.phuToiThieuAlgorithm = phuToiThieuAlgorithm;
     }
 
-    public NormalFormResponse kiemTraDangChuan(Set<String> universe, List<PhuThuocHam> tapF) {
-        NormalFormResponse response = new NormalFormResponse();
-        List<StepLog> steps = new ArrayList<>();
-        int stepCount = 1;
-
-        if (universe == null || universe.isEmpty()) {
-            response.setHighestNormalForm("1NF");
-            response.setSteps(steps);
-            return response;
+    public KetQuaKiemTraDangChuan kiemTraDangChuan(
+            Set<String> tapThuocTinh,
+            List<PhuThuocHam> tapF,
+            boolean giaTriNguyenTu) {
+        List<StepLog> buocGiai = new ArrayList<>();
+        List<Violation> viPham = new ArrayList<>();
+        if (!giaTriNguyenTu) {
+            viPham.add(new Violation("1NF", "Dữ liệu đầu vào",
+                    "Không thể khẳng định 1NF vì có thuộc tính chứa giá trị không nguyên tử."));
+            buocGiai.add(new StepLog(1, "Kiểm tra 1NF",
+                    "Có thuộc tính chứa giá trị không nguyên tử; lược đồ chưa đạt 1NF."));
+            return new KetQuaKiemTraDangChuan("Chưa đạt 1NF", List.of(), Set.of(), viPham, buocGiai);
         }
 
-        // Bước 1: Tìm tất cả các khóa
-        KeyResponse keyResp = timKhoaAlgorithm.timTatCaKhoa(universe, tapF);
-        List<Set<String>> keys = keyResp.getKeys();
-        Set<String> primeAttrs = keyResp.getPrimeAttributes();
-        Set<String> nonPrimeAttrs = keyResp.getNonPrimeAttributes();
+        buocGiai.add(new StepLog(1, "Giả định 1NF",
+                "Các giá trị thuộc tính được giả định là nguyên tử; tiếp tục kiểm tra 2NF, 3NF và BCNF."));
+        KetQuaTimKhoa ketQuaKhoa = timKhoaAlgorithm.timTatCaKhoa(tapThuocTinh, tapF);
+        appendSteps(buocGiai, "Tìm khóa", ketQuaKhoa.buocGiai());
+        Set<String> thuocTinhKhoa = new LinkedHashSet<>();
+        ketQuaKhoa.khoaUngVien().forEach(thuocTinhKhoa::addAll);
+        Set<String> thuocTinhKhongKhoa = new LinkedHashSet<>(tapThuocTinh);
+        thuocTinhKhongKhoa.removeAll(thuocTinhKhoa);
 
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 1: Xác định tập khóa và các loại thuộc tính",
-                String.format("Các khóa tìm được: %s. Thuộc tính khóa (Prime): %s. Thuộc tính không khóa: %s.",
-                        keys, primeAttrs, nonPrimeAttrs),
-                "Khóa: " + keys
-        ));
-
-        // Tách các phụ thuộc hàm thành vế phải đơn lẻ để kiểm tra chuẩn xác
-        List<PhuThuocHam> singleRightF = new ArrayList<>();
-        if (tapF != null) {
-            for (PhuThuocHam fd : tapF) {
-                if (fd.getVP() != null) {
-                    for (String right : fd.getVP()) {
-                        if (!fd.getVT().contains(right)) { // Bỏ qua phụ thuộc hàm hiển nhiên A -> A
-                            singleRightF.add(new PhuThuocHam(new HashSet<>(fd.getVT()), Set.of(right)));
-                        }
-                    }
+        boolean viPham2NF = false;
+        for (Set<String> khoa : ketQuaKhoa.khoaUngVien()) {
+            // Every proper subset is contained in one of these maximal proper subsets.
+            for (String attribute : khoa) {
+                Set<String> tapConMaximal = new LinkedHashSet<>(khoa);
+                tapConMaximal.remove(attribute);
+                Set<String> baoDong = baoDongAlgorithm.tinhBaoDong(tapConMaximal, tapF);
+                Set<String> phuThuocBoPhan = new LinkedHashSet<>(baoDong);
+                phuThuocBoPhan.retainAll(thuocTinhKhongKhoa);
+                if (!phuThuocBoPhan.isEmpty()) {
+                    viPham2NF = true;
+                    viPham.add(new Violation("2NF", tapConMaximal + " -> " + phuThuocBoPhan,
+                            "Một tập con thực sự của khóa ứng viên " + khoa
+                                    + " xác định thuộc tính không khóa " + phuThuocBoPhan + "."));
+                    buocGiai.add(new StepLog(buocGiai.size() + 1, "Vi phạm 2NF",
+                            "Khóa " + khoa + " bỏ " + attribute + " còn " + tapConMaximal
+                                    + "; bao đóng chứa thuộc tính không khóa " + phuThuocBoPhan + "."));
                 }
             }
         }
-
-        // Bước 2: Kiểm tra 2NF
-        // Vi phạm 2NF: Tồn tại X -> A với A là thuộc tính không khóa, và X là một bộ phận thực sự của một khóa K nào đó (X ⊂ K, X != K)
-        List<String> viPham2NF = new ArrayList<>();
-        for (PhuThuocHam fd : singleRightF) {
-            String a = fd.getVP().iterator().next();
-            if (nonPrimeAttrs.contains(a)) {
-                // A là thuộc tính không khóa, kiểm tra vế trái X có phải tập con thực sự của khóa nào không
-                for (Set<String> key : keys) {
-                    if (key.size() > 1 && key.containsAll(fd.getVT()) && !fd.getVT().equals(key)) {
-                        viPham2NF.add(String.format("FD %s -> %s vi phạm 2NF: Thuộc tính không khóa '%s' phụ thuộc vào bộ phận thực sự %s của khóa %s",
-                                fd.getVT(), a, a, fd.getVT(), key));
-                        break;
-                    }
-                }
-            }
+        if (!viPham2NF) {
+            buocGiai.add(new StepLog(buocGiai.size() + 1, "Đạt 2NF",
+                    "Không có thuộc tính không khóa nào phụ thuộc vào tập con thực sự của khóa ứng viên."));
         }
 
-        boolean is2NF = viPham2NF.isEmpty();
-        response.setIs2NF(is2NF);
-        response.setViolations2NF(viPham2NF);
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 2: Kiểm tra dạng chuẩn 2NF",
-                is2NF ? "Lược đồ đạt chuẩn 2NF: Mọi thuộc tính không khóa đều phụ thuộc đầy đủ vào các khóa chính."
-                        : String.format("Lược đồ KHÔNG đạt chuẩn 2NF do có %d vi phạm phụ thuộc bộ phận.", viPham2NF.size()),
-                is2NF ? "ĐẠT 2NF" : "VI PHẠM 2NF: " + viPham2NF
-        ));
-
-        // Bước 3: Kiểm tra 3NF
-        // Vi phạm 3NF: Tồn tại X -> A với A ∉ X mà X KHÔNG phải là siêu khóa VÀ A KHÔNG phải là thuộc tính khóa
-        List<String> viPham3NF = new ArrayList<>();
-        for (PhuThuocHam fd : singleRightF) {
-            String a = fd.getVP().iterator().next();
-            Set<String> closureX = baoDongAlgorithm.tinhBaoDong(fd.getVT(), tapF);
-            boolean xIsSuperKey = closureX.containsAll(universe);
-            boolean aIsPrime = primeAttrs.contains(a);
-
-            if (!xIsSuperKey && !aIsPrime) {
-                viPham3NF.add(String.format("FD %s -> %s vi phạm 3NF: Vế trái %s không phải siêu khóa VÀ vế phải '%s' không phải thuộc tính khóa",
-                        fd.getVT(), a, fd.getVT(), a));
+        boolean viPham3NF = false;
+        boolean viPhamBCNF = false;
+        for (PhuThuocHam fd : tachVePhai(tapF)) {
+            if (fd.getVT().containsAll(fd.getVP())) {
+                continue;
+            }
+            Set<String> baoDong = baoDongAlgorithm.tinhBaoDong(fd.getVT(), tapF);
+            boolean veTraiLaSieuKhoa = baoDong.containsAll(tapThuocTinh);
+            boolean vePhaiLaThuocTinhKhoa = thuocTinhKhoa.containsAll(fd.getVP());
+            if (!veTraiLaSieuKhoa && !vePhaiLaThuocTinhKhoa) {
+                viPham3NF = true;
+                viPham.add(new Violation("3NF", fd.toString(),
+                        "Vế trái không là siêu khóa và vế phải chứa thuộc tính không khóa."));
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Vi phạm 3NF",
+                        fd + ": vế trái có bao đóng " + baoDong
+                                + " không chứa U, vế phải không phải thuộc tính khóa."));
+            } else {
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Đạt điều kiện 3NF",
+                        fd + (veTraiLaSieuKhoa ? " có vế trái là siêu khóa."
+                                : " có vế phải là thuộc tính khóa.")));
+            }
+            if (!veTraiLaSieuKhoa) {
+                viPhamBCNF = true;
+                viPham.add(new Violation("BCNF", fd.toString(),
+                        "Vế trái không là siêu khóa."));
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Vi phạm BCNF",
+                        fd + " có vế trái với bao đóng " + baoDong + " không chứa toàn bộ U."));
             }
         }
-
-        boolean is3NF = is2NF && viPham3NF.isEmpty();
-        response.setIs3NF(is3NF);
-        response.setViolations3NF(viPham3NF);
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 3: Kiểm tra dạng chuẩn 3NF",
-                is3NF ? "Lược đồ đạt chuẩn 3NF: Với mọi X -> A, hoặc X là siêu khóa hoặc A là thuộc tính khóa."
-                        : String.format("Lược đồ KHÔNG đạt chuẩn 3NF do có %d vi phạm phụ thuộc bắc cầu.", viPham3NF.size()),
-                is3NF ? "ĐẠT 3NF" : "VI PHẠM 3NF: " + viPham3NF
-        ));
-
-        // Bước 4: Kiểm tra BCNF
-        // Vi phạm BCNF: Tồn tại X -> A với A ∉ X mà X KHÔNG phải là siêu khóa
-        List<String> viPhamBCNF = new ArrayList<>();
-        for (PhuThuocHam fd : singleRightF) {
-            String a = fd.getVP().iterator().next();
-            Set<String> closureX = baoDongAlgorithm.tinhBaoDong(fd.getVT(), tapF);
-            boolean xIsSuperKey = closureX.containsAll(universe);
-
-            if (!xIsSuperKey) {
-                viPhamBCNF.add(String.format("FD %s -> %s vi phạm BCNF: Vế trái %s không phải siêu khóa ((%s)+ != U)",
-                        fd.getVT(), a, fd.getVT(), fd.getVT()));
-            }
+        if (!viPhamBCNF) {
+            buocGiai.add(new StepLog(buocGiai.size() + 1, "Đạt BCNF",
+                    "Vế trái của mọi phụ thuộc hàm không tầm thường đều là siêu khóa."));
         }
 
-        boolean isBCNF = is3NF && viPhamBCNF.isEmpty();
-        response.setIsBCNF(isBCNF);
-        response.setViolationsBCNF(viPhamBCNF);
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 4: Kiểm tra dạng chuẩn BCNF",
-                isBCNF ? "Lược đồ đạt chuẩn BCNF: Vế trái của mọi phụ thuộc hàm đều là siêu khóa."
-                        : String.format("Lược đồ KHÔNG đạt BCNF do có %d phụ thuộc hàm mà vế trái không phải siêu khóa.", viPhamBCNF.size()),
-                isBCNF ? "ĐẠT BCNF" : "VI PHẠM BCNF: " + viPhamBCNF
-        ));
-
-        // Kết luận dạng chuẩn cao nhất
-        String highest;
-        if (isBCNF) highest = "BCNF";
-        else if (is3NF) highest = "3NF";
-        else if (is2NF) highest = "2NF";
-        else highest = "1NF";
-
-        response.setHighestNormalForm(highest);
-        steps.add(new StepLog(
-                stepCount,
-                "Kết luận dạng chuẩn cao nhất",
-                "Dạng chuẩn cao nhất của lược đồ là: " + highest,
-                highest
-        ));
-        response.setSteps(steps);
-
-        return response;
+        String dangChuanCaoNhat = viPham2NF ? "1NF"
+                : viPham3NF ? "2NF"
+                : viPhamBCNF ? "3NF" : "BCNF";
+        buocGiai.add(new StepLog(buocGiai.size() + 1, "Kết luận",
+                "Dạng chuẩn cao nhất là " + dangChuanCaoNhat + "."));
+        return new KetQuaKiemTraDangChuan(
+                dangChuanCaoNhat, ketQuaKhoa.khoaUngVien(), thuocTinhKhoa, viPham, buocGiai);
     }
 
-    public DecompositionResponse phanRa3NF(Set<String> universe, List<PhuThuocHam> tapF) {
-        DecompositionResponse response = new DecompositionResponse();
-        List<StepLog> steps = new ArrayList<>();
-        int stepCount = 1;
+    public KetQuaPhanRa3NF phanRa3NF(Set<String> tapThuocTinh, List<PhuThuocHam> tapF) {
+        KetQuaPhuToiThieu phuToiThieu = phuToiThieuAlgorithm.timPhuToiThieu(tapF);
+        List<StepLog> buocGiai = new ArrayList<>();
+        appendSteps(buocGiai, "Tìm phủ tối thiểu", phuToiThieu.buocGiai());
 
-        if (universe == null || universe.isEmpty()) {
-            response.setSteps(steps);
-            return response;
+        Map<Set<String>, Set<String>> nhomTheoVeTrai = new LinkedHashMap<>();
+        for (PhuThuocHam fd : phuToiThieu.phuToiThieu()) {
+            Set<String> veTrai = new LinkedHashSet<>(fd.getVT());
+            nhomTheoVeTrai.computeIfAbsent(veTrai, ignored -> new LinkedHashSet<>(veTrai))
+                    .addAll(fd.getVP());
+        }
+        List<Set<String>> quanHe = new ArrayList<>();
+        for (Set<String> nhom : nhomTheoVeTrai.values()) {
+            quanHe.add(nhom);
+            buocGiai.add(new StepLog(buocGiai.size() + 1, "Tạo lược đồ con",
+                    "Tạo quan hệ từ nhóm phụ thuộc có cùng vế trái: " + nhom + "."));
         }
 
-        // Bước 1: Tìm phủ tối thiểu
-        MinimalCoverResponse minCoverResp = phuToiThieuAlgorithm.timPhuToiThieu(tapF);
-        List<PhuThuocHamDTO> minCoverDto = minCoverResp.getMinimalCover();
-        response.setMinimalCover(minCoverDto);
-
-        List<PhuThuocHam> minCoverF = new ArrayList<>();
-        for (PhuThuocHamDTO dto : minCoverDto) {
-            minCoverF.add(dto.toModel());
-        }
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 1: Tìm tập phủ tối thiểu F_min",
-                String.format("Thu được phủ tối thiểu gồm %d phụ thuộc hàm làm cơ sở phân rã bảo toàn phụ thuộc.", minCoverF.size()),
-                minCoverDto.toString()
-        ));
-
-        // Bước 2: Gom các phụ thuộc hàm có cùng vế trái
-        // Với mỗi vế trái X, R_i = X U (hợp các vế phải)
-        Map<Set<String>, Set<String>> grouped = new LinkedHashMap<>();
-        for (PhuThuocHam fd : minCoverF) {
-            Set<String> left = new TreeSet<>(fd.getVT());
-            grouped.putIfAbsent(left, new TreeSet<>());
-            grouped.get(left).addAll(fd.getVP());
-        }
-
-        List<Set<String>> subSchemas = new ArrayList<>();
-        for (Map.Entry<Set<String>, Set<String>> entry : grouped.entrySet()) {
-            Set<String> relation = new TreeSet<>(entry.getKey());
-            relation.addAll(entry.getValue());
-            subSchemas.add(relation);
-        }
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 2: Gom các phụ thuộc hàm cùng vế trái tạo các quan hệ con R_i",
-                String.format("Tạo được %d quan hệ con từ các nhóm vế trái của F_min.", subSchemas.size()),
-                subSchemas.toString()
-        ));
-
-        // Bước 3: Đảm bảo bảo toàn thông tin (Lossless Join)
-        // Tìm các khóa của U
-        KeyResponse keyResp = timKhoaAlgorithm.timTatCaKhoa(universe, tapF);
-        List<Set<String>> keys = keyResp.getKeys();
-
-        boolean containsCandidateKey = false;
-        for (Set<String> rel : subSchemas) {
-            for (Set<String> key : keys) {
-                if (rel.containsAll(key)) {
-                    containsCandidateKey = true;
+        for (int i = 0; i < quanHe.size(); i++) {
+            Set<String> current = quanHe.get(i);
+            boolean containedByAnother = false;
+            for (int j = 0; j < quanHe.size(); j++) {
+                if (i != j && quanHe.get(j).containsAll(current)
+                        && !current.containsAll(quanHe.get(j))) {
+                    containedByAnother = true;
                     break;
                 }
             }
-            if (containsCandidateKey) break;
+            if (containedByAnother) {
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Loại lược đồ con dư",
+                        "Loại " + current + " vì tập thuộc tính đã nằm trong một quan hệ lớn hơn."));
+                quanHe.remove(i--);
+            }
         }
 
-        if (!containsCandidateKey && !keys.isEmpty()) {
-            Set<String> chosenKey = keys.get(0);
-            subSchemas.add(new TreeSet<>(chosenKey));
-            steps.add(new StepLog(
-                    stepCount++,
-                    "Bước 3: Bổ sung quan hệ chứa khóa để bảo toàn thông tin (Lossless Join)",
-                    String.format("Chưa có quan hệ con nào chứa trọn vẹn một khóa của U. Bổ sung quan hệ con R_k = %s.", chosenKey),
-                    "Thêm quan hệ khóa: " + chosenKey
-            ));
+        KetQuaTimKhoa ketQuaKhoa = timKhoaAlgorithm.timTatCaKhoa(tapThuocTinh, tapF);
+        appendSteps(buocGiai, "Kiểm tra khóa", ketQuaKhoa.buocGiai());
+        boolean daCoQuanHeChuaKhoa = ketQuaKhoa.khoaUngVien().stream()
+                .anyMatch(key -> quanHe.stream().anyMatch(relation -> relation.containsAll(key)));
+        if (!daCoQuanHeChuaKhoa && !ketQuaKhoa.khoaUngVien().isEmpty()) {
+            Set<String> khoa = new LinkedHashSet<>(ketQuaKhoa.khoaUngVien().get(0));
+            quanHe.add(khoa);
+            buocGiai.add(new StepLog(buocGiai.size() + 1, "Bảo đảm có khóa",
+                    "Thêm quan hệ " + khoa + " vì chưa có quan hệ con nào chứa một khóa ứng viên."));
         } else {
-            steps.add(new StepLog(
-                    stepCount++,
-                    "Bước 3: Kiểm tra tính bảo toàn thông tin (Lossless Join)",
-                    "Đã có ít nhất một quan hệ con chứa trọn vẹn khóa của U -> Đảm bảo phép nối không mất mát thông tin.",
-                    "Đã thỏa mãn Lossless Join"
-            ));
+            buocGiai.add(new StepLog(buocGiai.size() + 1, "Kiểm tra khóa",
+                    "Đã có ít nhất một quan hệ con chứa trọn khóa ứng viên."));
         }
-
-        // Bước 4: Loại bỏ các quan hệ bị bao bởi quan hệ khác (R_i ⊆ R_j)
-        List<Set<String>> finalSchemas = new ArrayList<>();
-        for (int i = 0; i < subSchemas.size(); i++) {
-            Set<String> r1 = subSchemas.get(i);
-            boolean isSubset = false;
-            for (int j = 0; j < subSchemas.size(); j++) {
-                if (i != j) {
-                    Set<String> r2 = subSchemas.get(j);
-                    if (r2.containsAll(r1)) {
-                        isSubset = true;
-                        break;
-                    }
-                }
-            }
-            if (!isSubset && !finalSchemas.contains(r1)) {
-                finalSchemas.add(r1);
-            }
-        }
-
-        steps.add(new StepLog(
-                stepCount,
-                "Bước 4: Loại bỏ quan hệ con dư thừa (R_i ⊆ R_j)",
-                String.format("Sau khi loại bỏ các tập con dư thừa, thu được %d quan hệ con chuẩn 3NF.", finalSchemas.size()),
-                finalSchemas.toString()
-        ));
-
-        response.setSubSchemas(finalSchemas);
-        response.setSteps(steps);
-
-        return response;
+        return new KetQuaPhanRa3NF(quanHe, ketQuaKhoa.khoaUngVien(), buocGiai);
     }
+
+    private List<PhuThuocHam> tachVePhai(List<PhuThuocHam> tapF) {
+        List<PhuThuocHam> ketQua = new ArrayList<>();
+        for (PhuThuocHam fd : tapF) {
+            for (String attribute : fd.getVP()) {
+                ketQua.add(new PhuThuocHam(
+                        new LinkedHashSet<>(fd.getVT()), new LinkedHashSet<>(Set.of(attribute))));
+            }
+        }
+        return ketQua;
+    }
+
+    private void appendSteps(List<StepLog> target, String phase, List<StepLog> source) {
+        for (StepLog step : source) {
+            target.add(new StepLog(target.size() + 1, phase, step.detail()));
+        }
+    }
+
+    public record Violation(String normalForm, String dependency, String reason) {}
+
+    public record KetQuaKiemTraDangChuan(
+            String dangChuanCaoNhat,
+            List<Set<String>> khoaUngVien,
+            Set<String> thuocTinhKhoa,
+            List<Violation> viPham,
+            List<StepLog> buocGiai) {}
+
+    public record KetQuaPhanRa3NF(
+            List<Set<String>> cacQuanHe,
+            List<Set<String>> khoaUngVien,
+            List<StepLog> buocGiai) {}
 }

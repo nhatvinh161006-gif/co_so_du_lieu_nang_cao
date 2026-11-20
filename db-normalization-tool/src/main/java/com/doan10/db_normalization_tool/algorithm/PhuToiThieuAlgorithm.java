@@ -1,163 +1,80 @@
 package com.doan10.db_normalization_tool.algorithm;
 
-import com.doan10.db_normalization_tool.dto.MinimalCoverResponse;
-import com.doan10.db_normalization_tool.dto.PhuThuocHamDTO;
-import com.doan10.db_normalization_tool.dto.StepLog;
 import com.doan10.db_normalization_tool.model.PhuThuocHam;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.doan10.db_normalization_tool.model.StepLog;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 public class PhuToiThieuAlgorithm {
-
-    @Autowired
-    private BaoDongAlgorithm baoDongAlgorithm;
-
-    public PhuToiThieuAlgorithm() {}
+    private final BaoDongAlgorithm baoDongAlgorithm;
 
     public PhuToiThieuAlgorithm(BaoDongAlgorithm baoDongAlgorithm) {
         this.baoDongAlgorithm = baoDongAlgorithm;
     }
 
-    public MinimalCoverResponse timPhuToiThieu(List<PhuThuocHam> originalF) {
-        MinimalCoverResponse response = new MinimalCoverResponse();
-        List<StepLog> steps = new ArrayList<>();
-        int stepCount = 1;
+    public KetQuaPhuToiThieu timPhuToiThieu(List<PhuThuocHam> tapF) {
+        List<PhuThuocHam> phuThuocHam = new ArrayList<>();
+        List<StepLog> buocGiai = new ArrayList<>();
 
-        List<PhuThuocHamDTO> origDtoList = new ArrayList<>();
-        if (originalF != null) {
-            for (PhuThuocHam fd : originalF) {
-                origDtoList.add(new PhuThuocHamDTO(fd));
-            }
-        }
-        response.setOriginalDependencies(origDtoList);
-
-        if (originalF == null || originalF.isEmpty()) {
-            response.setSteps(steps);
-            return response;
-        }
-
-        // ====================================================================
-        // BƯỚC 1: Tách vế phải thành thuộc tính đơn (Single attribute on RHS)
-        // ====================================================================
-        List<PhuThuocHam> f1 = new ArrayList<>();
-        for (PhuThuocHam fd : originalF) {
-            if (fd.getVP() != null) {
-                for (String rightAttr : fd.getVP()) {
-                    f1.add(new PhuThuocHam(new HashSet<>(fd.getVT()), Set.of(rightAttr)));
-                }
+        for (PhuThuocHam fd : tapF) {
+            for (String thuocTinh : fd.getVP()) {
+                PhuThuocHam tach = new PhuThuocHam(
+                        new LinkedHashSet<>(fd.getVT()),
+                        new LinkedHashSet<>(Set.of(thuocTinh)));
+                phuThuocHam.add(tach);
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Tách vế phải",
+                        "Tách " + fd + " thành phụ thuộc đơn thuộc tính " + tach + "."));
             }
         }
 
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 1: Tách vế phải",
-                String.format("Phân rã tất cả các phụ thuộc hàm có vế phải nhiều thuộc tính thành các phụ thuộc hàm có vế phải đơn lẻ. Tổng số FD sau khi tách: %d.", f1.size()),
-                formatFList(f1)
-        ));
-
-        // ====================================================================
-        // BƯỚC 2: Rút gọn vế trái (Remove extraneous attributes on LHS)
-        // ====================================================================
-        List<PhuThuocHam> f2 = new ArrayList<>();
-        List<String> rutGonLogs = new ArrayList<>();
-
-        for (PhuThuocHam fd : f1) {
-            Set<String> left = new TreeSet<>(fd.getVT());
-            String rightAttr = fd.getVP().iterator().next();
-
-            // Nếu vế trái có từ 2 thuộc tính trở lên, kiểm tra từng thuộc tính
-            if (left.size() > 1) {
-                List<String> leftList = new ArrayList<>(left);
-                for (String attr : leftList) {
-                    if (left.size() <= 1) break;
-
-                    Set<String> reducedLeft = new HashSet<>(left);
-                    reducedLeft.remove(attr);
-
-                    // Tính bao đóng của (X \ {attr}) trên toàn bộ tập f1
-                    Set<String> closure = baoDongAlgorithm.tinhBaoDong(reducedLeft, f1);
-                    if (closure.contains(rightAttr)) {
-                        // attr là thuộc tính dư thừa ở vế trái
-                        left.remove(attr);
-                        rutGonLogs.add(String.format("Trong FD %s -> %s: Loại bỏ thuộc tính dư thừa '%s' vì (%s)+ = %s đã chứa '%s'",
-                                fd.getVT(), rightAttr, attr, reducedLeft, new TreeSet<>(closure), rightAttr));
+        for (int i = 0; i < phuThuocHam.size(); i++) {
+            PhuThuocHam fd = phuThuocHam.get(i);
+            boolean changed;
+            do {
+                changed = false;
+                for (String attribute : new ArrayList<>(fd.getVT())) {
+                    Set<String> leftTrial = new LinkedHashSet<>(fd.getVT());
+                    leftTrial.remove(attribute);
+                    Set<String> closure = baoDongAlgorithm.tinhBaoDong(leftTrial, phuThuocHam);
+                    if (closure.containsAll(fd.getVP())) {
+                        fd.setVT(leftTrial);
+                        changed = true;
+                        buocGiai.add(new StepLog(buocGiai.size() + 1, "Rút gọn vế trái",
+                                "Trong " + fd + ", bỏ " + attribute + " vì "
+                                        + leftTrial + "+ vẫn chứa " + fd.getVP() + "."));
+                        break;
                     }
+                    buocGiai.add(new StepLog(buocGiai.size() + 1, "Giữ thuộc tính vế trái",
+                            "Không thể bỏ " + attribute + " khỏi " + fd
+                                    + " vì bao đóng thử " + closure + " không chứa " + fd.getVP() + "."));
                 }
-            }
-            f2.add(new PhuThuocHam(left, Set.of(rightAttr)));
+            } while (changed);
         }
 
-        String b2Desc = rutGonLogs.isEmpty()
-                ? "Không có thuộc tính dư thừa ở vế trái của các phụ thuộc hàm."
-                : String.join("; ", rutGonLogs);
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 2: Rút gọn vế trái",
-                b2Desc,
-                formatFList(f2)
-        ));
-
-        // ====================================================================
-        // BƯỚC 3: Loại bỏ các phụ thuộc hàm dư thừa (Remove redundant FDs)
-        // ====================================================================
-        List<PhuThuocHam> f3 = new ArrayList<>(f2);
-        List<String> loaiBoLogs = new ArrayList<>();
-
-        int i = 0;
-        while (i < f3.size()) {
-            PhuThuocHam currentFD = f3.get(i);
-            String rightAttr = currentFD.getVP().iterator().next();
-
-            // Tạo tập G = f3 \ {currentFD}
-            List<PhuThuocHam> g = new ArrayList<>(f3);
-            g.remove(i);
-
-            // Tính bao đóng của currentFD.getVT() trên tập G
-            Set<String> closure = baoDongAlgorithm.tinhBaoDong(currentFD.getVT(), g);
-
-            if (closure.contains(rightAttr)) {
-                // currentFD có thể suy ra từ các FD còn lại -> dư thừa -> xóa
-                loaiBoLogs.add(String.format("Loại bỏ FD dư thừa [%s] vì vế trái %s có bao đóng trên F còn lại là %s (đã chứa '%s')",
-                        currentFD, currentFD.getVT(), new TreeSet<>(closure), rightAttr));
-                f3.remove(i); // Xóa khỏi danh sách, không tăng i
+        for (int i = 0; i < phuThuocHam.size();) {
+            PhuThuocHam fd = phuThuocHam.get(i);
+            List<PhuThuocHam> conLai = new ArrayList<>(phuThuocHam);
+            conLai.remove(i);
+            Set<String> closure = baoDongAlgorithm.tinhBaoDong(fd.getVT(), conLai);
+            if (closure.containsAll(fd.getVP())) {
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Loại phụ thuộc dư thừa",
+                        "Xóa " + fd + " vì vế trái có bao đóng " + closure
+                                + " trên tập FD còn lại, vẫn suy ra được vế phải."));
+                phuThuocHam.remove(i);
             } else {
-                i++; // Giữ lại, chuyển sang xét FD tiếp theo
+                buocGiai.add(new StepLog(buocGiai.size() + 1, "Giữ phụ thuộc",
+                        "Giữ " + fd + " vì nếu bỏ đi, bao đóng " + closure
+                                + " không suy ra được vế phải " + fd.getVP() + "."));
+                i++;
             }
         }
-
-        String b3Desc = loaiBoLogs.isEmpty()
-                ? "Tất cả các phụ thuộc hàm đều cần thiết, không có phụ thuộc hàm nào bị dư thừa."
-                : String.join("; ", loaiBoLogs);
-
-        steps.add(new StepLog(
-                stepCount++,
-                "Bước 3: Loại bỏ phụ thuộc hàm dư thừa",
-                b3Desc,
-                formatFList(f3)
-        ));
-
-        // Chuyển kết quả sang DTO
-        List<PhuThuocHamDTO> minCoverDto = new ArrayList<>();
-        for (PhuThuocHam fd : f3) {
-            minCoverDto.add(new PhuThuocHamDTO(fd));
-        }
-        response.setMinimalCover(minCoverDto);
-        response.setSteps(steps);
-
-        return response;
+        return new KetQuaPhuToiThieu(phuThuocHam, buocGiai);
     }
 
-    private String formatFList(List<PhuThuocHam> list) {
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < list.size(); i++) {
-            sb.append(list.get(i).toString());
-            if (i < list.size() - 1) sb.append("; ");
-        }
-        sb.append("]");
-        return sb.toString();
-    }
+    public record KetQuaPhuToiThieu(List<PhuThuocHam> phuToiThieu, List<StepLog> buocGiai) {}
 }

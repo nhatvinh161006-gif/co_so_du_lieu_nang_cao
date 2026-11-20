@@ -8,7 +8,7 @@ import java.io.Serializable;
  * Thể hiện:
  * 1. OID (Object Identifier) tự động sinh bằng @Id và @GeneratedValue
  * 2. Quan hệ kế thừa (Inheritance) chiến lược JOINED
- * 3. Thuộc tính trích xuất từ EER: hoTen, ngaySinh
+ * 3. Thuộc tính trích xuất từ EER và Công việc.docx: hoTen, ngaySinh, gioiTinh
  */
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -21,12 +21,20 @@ public class Nguoi implements Serializable {
 
     private String hoTen;
     private String ngaySinh; // Khớp với thuộc tính NgaySinh trên sơ đồ EER
+    private String gioiTinh; // Khớp với yêu cầu Công việc.docx: "Nam" hoặc "Nữ"
 
     public Nguoi() {}
 
     public Nguoi(String hoTen, String ngaySinh) {
         this.hoTen = hoTen;
         this.ngaySinh = ngaySinh;
+        this.gioiTinh = "Nam"; // Mặc định
+    }
+
+    public Nguoi(String hoTen, String ngaySinh, String gioiTinh) {
+        this.hoTen = hoTen;
+        this.ngaySinh = ngaySinh;
+        this.gioiTinh = gioiTinh;
     }
 
     public Long getId() {
@@ -53,8 +61,16 @@ public class Nguoi implements Serializable {
         this.ngaySinh = ngaySinh;
     }
 
+    public String getGioiTinh() {
+        return gioiTinh;
+    }
+
+    public void setGioiTinh(String gioiTinh) {
+        this.gioiTinh = gioiTinh;
+    }
+
     @Override
     public String toString() {
-        return "Nguoi[id=" + id + ", hoTen=" + hoTen + ", ngaySinh=" + ngaySinh + "]";
+        return "Nguoi[id=" + id + ", hoTen=" + hoTen + ", ngaySinh=" + ngaySinh + ", gioiTinh=" + gioiTinh + "]";
     }
 }
