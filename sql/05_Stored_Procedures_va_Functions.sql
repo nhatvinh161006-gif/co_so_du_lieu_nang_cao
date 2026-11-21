@@ -200,4 +200,80 @@ BEGIN
 END;
 $$;
 
-SELECT 'Tạo thành công các Stored Procedures & Functions PL/pgSQL.' AS ket_qua;
+-- ============================================================
+-- HÀM 5: SQL ĐỘNG (Dynamic SQL với Whitelist chống SQL Injection)
+-- 5a) dem_ban_ghi: Đếm bản ghi động (khớp báo cáo mục 6.2)
+-- 5b) fn_TraCuuDongSinhVien: Tra cứu & sắp xếp động theo tiêu chí
+-- ============================================================
+CREATE OR REPLACE FUNCTION qldt.dem_ban_ghi(p_ten_bang TEXT)
+RETURNS BIGINT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_table TEXT := lower(trim(p_ten_bang));
+    v_count BIGINT;
+BEGIN
+    IF v_table NOT IN ('sinhvien', 'dangky') THEN
+        RAISE EXCEPTION 'Tên bảng không nằm trong danh sách cho phép: %', p_ten_bang
+            USING ERRCODE = '22023';
+    END IF;
+    EXECUTE format('SELECT count(*) FROM qldt.%I', v_table) INTO v_count;
+    RETURN v_count;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_TraCuuDongSinhVien(
+    p_HocKy  SMALLINT DEFAULT NULL,
+    p_SapXep TEXT     DEFAULT 'diem_tb',
+    p_Huong  TEXT     DEFAULT 'DESC'
+)
+RETURNS TABLE (
+    MaSV     CHAR(10),
+    TenSV    VARCHAR(100),
+    TenNganh VARCHAR(100),
+    SoMon    BIGINT,
+    DiemTB   NUMERIC(4,2)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_order_col TEXT;
+    v_dir       TEXT;
+    v_sql       TEXT;
+BEGIN
+    v_order_col := CASE lower(trim(p_SapXep))
+        WHEN 'diem_tb' THEN 'DiemTB'
+        WHEN 'ten_sv'  THEN 'sv.TenSV'
+        WHEN 'ma_sv'   THEN 'sv.MaSV'
+        ELSE NULL
+    END;
+    IF v_order_col IS NULL THEN
+        RAISE EXCEPTION 'Cột sắp xếp không hợp lệ: %', p_SapXep USING ERRCODE = '22023';
+    END IF;
+
+    v_dir := CASE upper(trim(p_Huong))
+        WHEN 'ASC'  THEN 'ASC'
+        WHEN 'DESC' THEN 'DESC'
+        ELSE NULL
+    END;
+    IF v_dir IS NULL THEN
+        RAISE EXCEPTION 'Hướng sắp xếp không hợp lệ: %', p_Huong USING ERRCODE = '22023';
+    END IF;
+
+    v_sql := format(
+        'SELECT sv.MaSV, sv.TenSV, n.TenNganh, COUNT(dk.MaLHP) AS SoMon,
+                ROUND(AVG(dk.Diem), 2) AS DiemTB
+         FROM qldt.SinhVien sv
+         JOIN qldt.Nganh n ON sv.MaNganh = n.MaNganh
+         LEFT JOIN qldt.DangKy dk ON sv.MaSV = dk.MaSV
+         LEFT JOIN qldt.LopHocPhan lhp ON dk.MaLHP = lhp.MaLHP
+         WHERE ($1 IS NULL OR lhp.HocKy = $1)
+         GROUP BY sv.MaSV, sv.TenSV, n.TenNganh
+         ORDER BY %s %s NULLS LAST',
+        v_order_col, v_dir
+    );
+    RETURN QUERY EXECUTE v_sql USING p_HocKy;
+END;
+$$;
+
+SELECT 'Tạo thành công các Stored Procedures, Functions & SQL động PL/pgSQL.' AS ket_qua;

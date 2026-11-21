@@ -40,7 +40,7 @@ Ngoài các chỉ mục B-Tree mặc định trên Khóa chính:
 
 ## 3. CƠ CẤU BỘ MÃ NGUỒN SQL ĐÃ XÂY DỰNG
 
-Toàn bộ mã nguồn nằm tại thư mục `sql/` gồm 7 tệp thực thi tuần tự:
+Toàn bộ mã nguồn nằm tại thư mục `sql/` gồm 8 tệp thực thi tuần tự:
 
 ```text
 sql/
@@ -48,9 +48,10 @@ sql/
 ├── 02_DML_du_lieu_mau.sql              # Nạp dữ liệu mẫu thực tế
 ├── 03_SQL_nang_cao_truy_van.sql        # 10 truy vấn phức tạp (Window fn, CTE, Recursive)
 ├── 04_View_va_MaterializedView.sql     # View chi tiết & Materialized View xếp hạng GPA
-├── 05_Stored_Procedures_va_Functions.sql # Hàm tính GPA, kiểm tra trùng lịch, SP đăng ký
+├── 05_Stored_Procedures_va_Functions.sql # Hàm tính GPA, kiểm tra trùng lịch, SP đăng ký, SQL động
 ├── 06_Triggers_va_RangBuocNangCao.sql  # Trigger kiểm soát sĩ số, chống trùng giờ, Audit Log
-├── 07_Transactions_va_Concurrency.sql  # ACID, Savepoint, Locking, Chuyển lớp nguyên tử
+├── 07_Transactions_va_Concurrency.sql  # ACID, Subtransaction, Locking, Chuyển lớp & 2 phiên tranh chấp
+├── 08_Explain_Analyze_ThucNghiem.sql   # Đo thực tế EXPLAIN (ANALYZE, BUFFERS) trước/sau Index
 └── README_ThietKeVatLy_va_SQLNangCao.md # Tài liệu hướng dẫn & giải trình kỹ thuật
 ```
 
@@ -99,4 +100,16 @@ psql -U postgres -d qldt_db -f sql/04_View_va_MaterializedView.sql
 psql -U postgres -d qldt_db -f sql/05_Stored_Procedures_va_Functions.sql
 psql -U postgres -d qldt_db -f sql/06_Triggers_va_RangBuocNangCao.sql
 psql -U postgres -d qldt_db -f sql/07_Transactions_va_Concurrency.sql
+psql -U postgres -d qldt_db -f sql/08_Explain_Analyze_ThucNghiem.sql
 ```
+
+---
+
+## 6. PHÂN TÍCH DẠNG CHUẨN 4NF (PHỤ THUỘC ĐA TRỊ - MVD)
+
+Trong 8 quan hệ sau phân rã (`Khoa`, `Nganh`, `GiangVien`, `Phong`, `HocPhan`, `SinhVien`, `LopHocPhan`, `DangKy`), mọi thuộc tính đều mang giá trị nguyên tử (1NF) và không tồn tại phụ thuộc đa trị độc lập không tầm thường dạng $X \twoheadrightarrow Y \mid Z$ (với $X$ không phải siêu khóa):
+- Các quan hệ `Khoa`, `Nganh`, `GiangVien`, `Phong`, `HocPhan`, `SinhVien` đều có khóa chính đơn thuộc tính xác định duy nhất toàn bộ các thuộc tính còn lại.
+- `LopHocPhan` chỉ gắn với một học phần, một giảng viên, một phòng và một lịch đại diện duy nhất.
+- `DangKy(MaSV, MaLHP, Diem)` chỉ có một thuộc tính không khóa là `Diem`, phụ thuộc hàm đầy đủ vào `(MaSV, MaLHP)`.
+
+Do đó, lược đồ hiện tại **đạt chuẩn 4NF**. Nếu sau này mở rộng một học phần có đồng thời nhiều giảng viên phụ trách độc lập với nhiều tài liệu tham khảo (phát sinh $MaHP \twoheadrightarrow MaGV$ và $MaHP \twoheadrightarrow TaiLieu$), cần tách thành 2 bảng riêng để tiếp tục duy trì 4NF.

@@ -19,7 +19,7 @@ CREATE TABLE Khoa (
     TenKhoa     VARCHAR(100) NOT NULL UNIQUE,
     DiaChi      VARCHAR(200),
     DienThoai   VARCHAR(15),
-    CONSTRAINT chk_khoa_ma CHECK (MaKhoa ~ '^[A-Z0-9]+$')
+    CONSTRAINT chk_khoa_ma CHECK (rtrim(MaKhoa) ~ '^[A-Z0-9]+$')
 );
 COMMENT ON TABLE  Khoa IS 'Bảng lưu thông tin các khoa trong trường';
 COMMENT ON COLUMN Khoa.MaKhoa IS 'Mã khoa - chỉ chứa chữ hoa và số';
@@ -89,7 +89,7 @@ CREATE TABLE SinhVien (
     MaSV        CHAR(10)     PRIMARY KEY,
     TenSV       VARCHAR(100) NOT NULL,
     NgaySinh    DATE         NOT NULL,
-    GioiTinh    CHAR(3)      DEFAULT 'Nam',
+    GioiTinh    VARCHAR(4)   DEFAULT 'Nam',
     MaNganh     CHAR(10)     NOT NULL,
     Email       VARCHAR(100) UNIQUE,
     CONSTRAINT chk_sv_gioitinh CHECK (GioiTinh IN ('Nam','Nu','Khac')),

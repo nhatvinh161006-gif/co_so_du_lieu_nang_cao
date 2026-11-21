@@ -198,13 +198,13 @@ SELECT
     lhp.HocKy,
     lhp.NamHoc,
     COUNT(dk.MaSV)                                          AS tong_dk,
-    COUNT(dk.Diem FILTER (WHERE dk.Diem >= 5))             AS so_dat,
-    COUNT(dk.Diem FILTER (WHERE dk.Diem < 5))              AS so_truot,
-    COUNT(*) FILTER (WHERE dk.Diem IS NULL)                AS chua_thi,
+    COUNT(dk.Diem) FILTER (WHERE dk.Diem >= 5)              AS so_dat,
+    COUNT(dk.Diem) FILTER (WHERE dk.Diem < 5)               AS so_truot,
+    COUNT(*) FILTER (WHERE dk.Diem IS NULL)                 AS chua_thi,
     ROUND(100.0 *
-          COUNT(dk.Diem FILTER (WHERE dk.Diem >= 5)) /
-          NULLIF(COUNT(dk.Diem), 0), 1)                    AS ty_le_dat_pct,
-    ROUND(AVG(dk.Diem FILTER (WHERE dk.Diem IS NOT NULL)), 2) AS diem_tb
+          COUNT(dk.Diem) FILTER (WHERE dk.Diem >= 5) /
+          NULLIF(COUNT(dk.Diem), 0), 1)                     AS ty_le_dat_pct,
+    ROUND(AVG(dk.Diem) FILTER (WHERE dk.Diem IS NOT NULL), 2) AS diem_tb
 FROM DangKy dk
 JOIN LopHocPhan lhp ON dk.MaLHP = lhp.MaLHP
 JOIN HocPhan    hp  ON lhp.MaHP  = hp.MaHP
@@ -221,7 +221,7 @@ WITH RECURSIVE lo_trinh(MaHP, TenHP, SoTC, cap, duong_di) AS (
     -- Cơ sở: học phần gốc (không cần tiên quyết - giả lập)
     SELECT hp.MaHP, hp.TenHP, hp.SoTC,
            1 AS cap,
-           hp.TenHP AS duong_di
+           hp.TenHP::TEXT AS duong_di
     FROM HocPhan hp
     WHERE hp.MaHP IN ('MA101', 'EN101', 'CS101')  -- Môn không cần tiên quyết
 

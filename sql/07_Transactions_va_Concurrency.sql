@@ -21,21 +21,15 @@ BEGIN
     VALUES (v_SV, 'LHP2401001', CURRENT_DATE);
     RAISE NOTICE 'Đăng ký thành công môn chính LHP2401001.';
 
-    -- Thiết lập điểm lưu (Savepoint) trước khi đăng ký môn tự chọn
-    SAVEPOINT sp_mon_tu_chon;
-
+    -- Trong PL/pgSQL, khối BEGIN ... EXCEPTION tự tạo subtransaction nguyên tử
     BEGIN
         -- Thử đăng ký môn tự chọn (giả sử có thể gặp lỗi hết chỗ hoặc vi phạm)
         INSERT INTO DangKy (MaSV, MaLHP, NgayDangKy)
         VALUES (v_SV, 'LHP2401002', CURRENT_DATE);
         RAISE NOTICE 'Đăng ký thành công môn tự chọn LHP2401002.';
     EXCEPTION WHEN OTHERS THEN
-        RAISE WARNING 'Lỗi khi đăng ký môn tự chọn: %. Rollback về Savepoint.', SQLERRM;
-        ROLLBACK TO SAVEPOINT sp_mon_tu_chon;
+        RAISE WARNING 'Lỗi khi đăng ký môn tự chọn: %. Subtransaction đã tự hoàn tác.', SQLERRM;
     END;
-
-    -- Giải phóng savepoint
-    RELEASE SAVEPOINT sp_mon_tu_chon;
 
     RAISE NOTICE 'Hoàn tất giao dịch đăng ký theo khối.';
 END;
@@ -91,4 +85,37 @@ EXCEPTION
 END;
 $$;
 
-SELECT 'Tạo thành công kịch bản Transactions và thủ tục chuyển lớp nguyên tử.' AS ket_qua;
+-- ============================================================
+-- KỊCH BẢN 3: TRANH CHẤP ĐỒNG THỜI 2 PHIÊN (CONCURRENCY)
+-- Hai sinh viên (Phiên A & Phiên B) cùng đăng ký suất cuối cùng
+-- của lớp LHP2401001 (đặt SiSoToiDa = 7 khi lớp đã có 6 đăng ký).
+-- Chạy song song trên 2 cửa sổ psql / pgAdmin theo thứ tự T1 -> T5:
+-- ============================================================
+/*
+-- [Chuẩn bị trên 1 phiên]:
+UPDATE qldt.LopHocPhan SET SiSoToiDa = 7 WHERE MaLHP = 'LHP2401001';
+
+-- [T1 - Phiên A]:
+BEGIN;
+CALL qldt.sp_DangKyHocPhan('SV2001004', 'LHP2401001', NULL, NULL);
+-- -> Phiên A giữ khóa dòng LHP2401001 (SELECT ... FOR UPDATE), đăng ký thành công (7/7), CHƯA COMMIT.
+
+-- [T2 - Phiên B]:
+BEGIN;
+CALL qldt.sp_DangKyHocPhan('SV2001003', 'LHP2401001', NULL, NULL);
+-- -> Phiên B bị CHẶN CHỜ (Waiting) do Phiên A đang giữ khóa FOR UPDATE.
+
+-- [T3 - Phiên A]:
+COMMIT;
+-- -> Phiên A xác nhận giao dịch và nhả khóa.
+
+-- [T4 - Phiên B tự tiếp tục]:
+-- -> Đếm lại sĩ số thấy 7 >= 7 -> trả về p_Success = FALSE ("Lớp học phần đã hết chỗ (7/7)").
+COMMIT;
+
+-- [T5 - Kiểm tra kết quả]:
+SELECT COUNT(*) AS si_so_cuoi FROM qldt.DangKy WHERE MaLHP = 'LHP2401001';
+-- Kỳ vọng: 7 (không bao giờ vượt quá SiSoToiDa).
+*/
+
+SELECT 'Tạo thành công kịch bản Transactions, Concurrency 2 phiên và thủ tục chuyển lớp nguyên tử.' AS ket_qua;
