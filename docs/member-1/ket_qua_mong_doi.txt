@@ -1,0 +1,53 @@
+# KET QUA MONG DOI KHI CHAY U_F.txt (ban chinh thuc: 21 thuoc tinh, 10 PTH)
+# Da kiem chung bang chuong trinh Python doc lap. Backend Java doi chieu ket qua in ra man hinh.
+
+# ==== 1. BAO DONG X+ ====
+{MaSV}+ = {MaSV, TenSV, NgaySinh, MaNganh, TenNganh, MaKhoa, TenKhoa}
+{MaNganh}+ = {MaNganh, TenNganh, MaKhoa, TenKhoa}
+{MaGV}+ = {MaGV, TenGV, HocVi}
+{MaLHP}+ = {MaLHP, MaHP, TenHP, SoTC, HocKy, Thu, TietBD, MaGV, TenGV, HocVi, MaPhong, ToaNha, SucChua}
+{MaPhong, HocKy, Thu, TietBD}+ = {MaPhong, HocKy, Thu, TietBD, MaLHP, MaHP, TenHP, SoTC, MaGV, TenGV, HocVi, ToaNha, SucChua}
+{MaSV, MaLHP}+ = U (21 thuoc tinh)
+{MaSV, MaHP, HocKy}+ = {MaSV, MaHP, HocKy, TenSV, NgaySinh, MaNganh, TenNganh, MaKhoa, TenKhoa, TenHP, SoTC}   (KHONG phai U)
+
+# ==== 2. KIEM TRA SUY DIEN (F |= X -> Y ?) ====
+MaSV -> TenSV                            : TRUE
+MaSV -> TenKhoa                          : TRUE
+MaLHP -> ToaNha                          : TRUE
+MaSV, MaLHP -> TenGV, SoTC, TenKhoa, Diem: TRUE
+MaSV -> TenHP                            : FALSE
+MaLHP -> Diem                            : FALSE
+MaKhoa -> TenNganh                       : FALSE
+
+# ==== 3. TAT CA CAC KHOA (3 khoa) ====
+{MaSV, MaLHP}
+{MaSV, MaGV, HocKy, Thu, TietBD}
+{MaSV, MaPhong, HocKy, Thu, TietBD}
+# Thuoc tinh khoa    : MaSV, MaLHP, MaGV, MaPhong, HocKy, Thu, TietBD
+# Thuoc tinh nguon (khong bao gio o ve phai, bat buoc co trong moi khoa): MaSV
+# Thuoc tinh dich (chi o ve phai, khong bao gio thuoc khoa): Diem, TenSV, NgaySinh, TenNganh, TenKhoa, TenHP, SoTC, TenGV, HocVi, ToaNha, SucChua
+# Thuoc tinh trung gian: MaNganh, MaKhoa, MaHP, MaLHP, HocKy, Thu, TietBD, MaGV, MaPhong
+
+# ==== 4. DANG CHUAN ====
+Dang chuan cao nhat cua U: 1NF
+Vi pham 2NF (phu thuoc rieng phan vao khoa, ve phai la thuoc tinh khong khoa): 4
+   MaSV -> TenSV, NgaySinh, MaNganh
+   MaLHP -> MaHP, HocKy, MaGV, MaPhong, Thu, TietBD
+   MaGV -> TenGV, HocVi
+   MaPhong -> ToaNha, SucChua
+Vi pham 3NF: 7 (4 cai tren + MaNganh -> ..., MaKhoa -> ..., MaHP -> ...)
+Vi pham BCNF: 9 (7 cai tren + 2 PTH lich: {MaPhong,HocKy,Thu,TietBD} -> MaLHP va
+   {MaGV,HocKy,Thu,TietBD} -> MaLHP; ve trai cua chung khong phai sieu khoa vi bao dong khong chua MaSV, Diem)
+# Chi con 2 PTH khong vi pham BCNF/3NF la: MaSV, MaLHP -> Diem (ve trai la khoa).
+
+# ==== 5. HUONG PHAN RA MONG DOI (3NF, bao toan phu thuoc) ====
+KHOA(MaKhoa, TenKhoa)
+NGANH(MaNganh, TenNganh, MaKhoa)
+SINHVIEN(MaSV, TenSV, NgaySinh, MaNganh)
+HOCPHAN(MaHP, TenHP, SoTC)
+GIANGVIEN(MaGV, TenGV, HocVi)
+PHONGHOC(MaPhong, ToaNha, SucChua)
+LOPHOCPHAN(MaLHP, MaHP, HocKy, Thu, TietBD, MaGV, MaPhong)
+DANGKY(MaSV, MaLHP, Diem)
+# Luu y: ket qua chinh xac cua thuat toan tong hop co the khac chut it ve thu tu/gop luoc do,
+# nhung phai bao toan phu thuoc, khong mat thong tin, va moi luoc do o 3NF.
