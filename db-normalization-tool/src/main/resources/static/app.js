@@ -484,17 +484,16 @@ document.querySelectorAll('[data-tool]').forEach(button => button.addEventListen
 function openSampleChooser() {
   const chooser = $('sample-chooser');
   if (!chooser) return;
-  chooser.hidden = false;
-  document.body.classList.add('chooser-open');
-  const closeButton = chooser.querySelector('.sample-chooser-close');
-  if (closeButton) closeButton.focus();
+  const isOpen = !chooser.hidden;
+  chooser.hidden = isOpen;
+  if ($('load-sample')) $('load-sample').setAttribute('aria-expanded', String(!isOpen));
 }
 
 function closeSampleChooser() {
   const chooser = $('sample-chooser');
   if (!chooser) return;
   chooser.hidden = true;
-  document.body.classList.remove('chooser-open');
+  if ($('load-sample')) $('load-sample').setAttribute('aria-expanded', 'false');
   if ($('load-sample')) $('load-sample').focus();
 }
 
@@ -512,6 +511,12 @@ document.querySelectorAll('[data-sample-choice]').forEach(button => {
 });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && $('sample-chooser') && !$('sample-chooser').hidden) {
+    closeSampleChooser();
+  }
+});
+document.addEventListener('click', event => {
+  const chooser = $('sample-chooser');
+  if (chooser && !chooser.hidden && !event.target.closest('.sample-menu-wrap')) {
     closeSampleChooser();
   }
 });

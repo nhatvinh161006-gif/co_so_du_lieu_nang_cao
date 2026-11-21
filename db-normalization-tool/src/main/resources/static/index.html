@@ -4,8 +4,8 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Công cụ học tập phân tích phụ thuộc hàm và chuẩn hóa cơ sở dữ liệu.">
   <title>N10 — Công cụ thiết kế CSDL</title>
-  <link rel="stylesheet" href="styles.css">
-  <script defer src="core.js"></script><script defer src="app.js"></script>
+  <link rel="stylesheet" href="styles.css?v=sample-dropdown-2">
+  <script defer src="core.js"></script><script defer src="app.js?v=sample-dropdown-2"></script>
 </head>
 <body>
 <a class="skip" href="#main">Đi đến nội dung</a>
@@ -33,7 +33,35 @@
           <h1>Phân tích lược đồ</h1>
           <p>Khám phá phụ thuộc hàm, phân rã 3NF / BCNF, kiểm tra Chase &amp; bảo toàn phụ thuộc.</p>
         </div>
-        <button id="load-sample" class="button secondary"><span aria-hidden="true">↗</span> Nạp dữ liệu mẫu</button>
+        <div class="sample-menu-wrap">
+          <button id="load-sample" class="button secondary" aria-haspopup="true" aria-expanded="false" aria-controls="sample-chooser"><span aria-hidden="true">↗</span> Nạp dữ liệu mẫu</button>
+          <div id="sample-chooser" class="sample-chooser" role="group" aria-labelledby="sample-chooser-title" hidden>
+            <div class="sample-chooser-head">
+              <div>
+                <p class="eyebrow">CHỌN QUY MÔ DỮ LIỆU</p>
+                <h2 id="sample-chooser-title">Nạp dữ liệu mẫu</h2>
+              </div>
+              <button type="button" class="sample-chooser-close" data-close-sample-chooser aria-label="Đóng">×</button>
+            </div>
+            <div class="sample-chooser-options">
+              <button type="button" class="sample-choice" data-sample-choice="chain">
+                <span class="sample-choice-icon">A</span>
+                <span class="sample-choice-copy"><strong>Chuỗi truyền dẫn</strong><small>Nhỏ · 5 thuộc tính · 3 phụ thuộc</small></span>
+                <span class="sample-choice-action" aria-hidden="true">→</span>
+              </button>
+              <button type="button" class="sample-choice" data-sample-choice="student">
+                <span class="sample-choice-icon">SV</span>
+                <span class="sample-choice-copy"><strong>Quản lý sinh viên</strong><small>Vừa · 6 thuộc tính · 3 phụ thuộc</small></span>
+                <span class="sample-choice-action" aria-hidden="true">→</span>
+              </button>
+              <button type="button" class="sample-choice featured" data-sample-choice="full">
+                <span class="sample-choice-icon">21</span>
+                <span class="sample-choice-copy"><strong>Quản lý đào tạo</strong><small>Đầy đủ · 21 thuộc tính · 10 phụ thuộc</small></span>
+                <span class="sample-choice-action" aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="workspace-grid">
         <section class="panel input-panel" aria-labelledby="input-title">
@@ -498,40 +526,5 @@
   </main>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<div id="sample-chooser" class="sample-chooser" role="dialog" aria-modal="true" aria-labelledby="sample-chooser-title" hidden>
-  <div class="sample-chooser-backdrop" data-close-sample-chooser></div>
-  <div class="sample-chooser-dialog">
-    <div class="sample-chooser-head">
-      <div>
-        <p class="eyebrow">CHỌN QUY MÔ DỮ LIỆU</p>
-        <h2 id="sample-chooser-title">Nạp dữ liệu mẫu</h2>
-      </div>
-      <button type="button" class="sample-chooser-close" data-close-sample-chooser aria-label="Đóng">×</button>
-    </div>
-    <div class="sample-chooser-options">
-      <button type="button" class="sample-choice" data-sample-choice="chain">
-        <span class="sample-choice-size">NHỎ</span>
-        <span class="sample-choice-icon">A</span>
-        <strong>Chuỗi truyền dẫn</strong>
-        <small>5 thuộc tính · 3 phụ thuộc</small>
-        <span class="sample-choice-action">Chọn bộ này <b>→</b></span>
-      </button>
-      <button type="button" class="sample-choice" data-sample-choice="student">
-        <span class="sample-choice-size">VỪA</span>
-        <span class="sample-choice-icon">SV</span>
-        <strong>Quản lý sinh viên</strong>
-        <small>6 thuộc tính · 3 phụ thuộc</small>
-        <span class="sample-choice-action">Chọn bộ này <b>→</b></span>
-      </button>
-      <button type="button" class="sample-choice featured" data-sample-choice="full">
-        <span class="sample-choice-size">ĐẦY ĐỦ</span>
-        <span class="sample-choice-icon">21</span>
-        <strong>Quản lý đào tạo</strong>
-        <small>21 thuộc tính · 10 phụ thuộc</small>
-        <span class="sample-choice-action">Chọn bộ này <b>→</b></span>
-      </button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
