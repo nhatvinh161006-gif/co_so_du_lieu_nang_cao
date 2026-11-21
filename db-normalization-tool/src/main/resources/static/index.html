@@ -17,6 +17,7 @@
     <button class="nav-item" data-page="dataset"><span aria-hidden="true">▤</span> Dữ liệu &amp; sơ đồ EER</button>
     <button class="nav-item" data-page="simulation"><span aria-hidden="true">⚡</span> Nghiệp vụ &amp; Ràng buộc</button>
     <button class="nav-item" data-page="history"><span aria-hidden="true">⏱</span> Lịch sử (ObjectDB)</button>
+    <button class="nav-item" data-page="sql-lab"><span aria-hidden="true">⌘</span> SQL &amp; 4NF</button>
     <button class="nav-item" data-page="guide"><span aria-hidden="true">▧</span> Hướng dẫn sử dụng</button>
   </nav>
 </aside>
@@ -517,6 +518,65 @@
           </figure>
         </article>
       </div>
+    </section>
+
+    <section id="page-sql-lab" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">POSTGRESQL NÂNG CAO &amp; CHUẨN HÓA</p>
+          <h1>SQL nâng cao, Concurrency, EXPLAIN &amp; 4NF</h1>
+          <p>Tổng hợp các kịch bản SQL động, tranh chấp 2 phiên giao dịch, thực nghiệm EXPLAIN ANALYZE và phân tích 4NF trong thư mục <code>sql/</code>.</p>
+        </div>
+      </div>
+
+      <article class="card" style="margin-bottom:16px;">
+        <p class="eyebrow">1. PHÂN TÍCH DẠNG CHUẨN 4NF (PHỤ THUỘC ĐA TRỊ - MVD)</p>
+        <h2>Kết luận: 8 quan hệ sau phân rã đạt chuẩn 4NF</h2>
+        <p>Tất cả thuộc tính đều nguyên tử (1NF) và không tồn tại phụ thuộc đa trị độc lập không tầm thường dạng <code>X ↠ Y | Z</code> (với <code>X</code> không phải siêu khóa):</p>
+        <ul>
+          <li><code>Khoa, Nganh, GiangVien, Phong, HocPhan, SinhVien</code>: khóa chính đơn xác định duy nhất mọi thuộc tính còn lại.</li>
+          <li><code>LopHocPhan</code>: gắn với 1 học phần, 1 giảng viên, 1 phòng và 1 lịch đại diện duy nhất.</li>
+          <li><code>DangKy(MaSV, MaLHP, Diem)</code>: chỉ có 1 thuộc tính không khóa <code>Diem</code> phụ thuộc đầy đủ vào khóa ghép.</li>
+        </ul>
+      </article>
+
+      <article class="card" style="margin-bottom:16px;">
+        <p class="eyebrow">2. SQL ĐỘNG CHỐNG SQL INJECTION (sql/05_Stored_Procedures_va_Functions.sql)</p>
+        <h2>Hàm <code>EXECUTE format(...)</code> với Whitelist</h2>
+        <pre><code>-- Đếm bản ghi động (chỉ cho phép sinhvien, dangky; từ chối bảng khác mã lỗi 22023)
+SELECT qldt.dem_ban_ghi('sinhvien');
+SELECT qldt.dem_ban_ghi('dangky');
+
+-- Tra cứu &amp; sắp xếp động có whitelist cột và hướng sắp xếp
+SELECT * FROM qldt.fn_TraCuuDongSinhVien(1, 'diem_tb', 'DESC');</code></pre>
+      </article>
+
+      <article class="card" style="margin-bottom:16px;">
+        <p class="eyebrow">3. TRANH CHẤP ĐỒNG THỜI 2 PHIÊN (sql/07_Transactions_va_Concurrency.sql)</p>
+        <h2>Phiên A vs Phiên B cạnh tranh suất cuối (<code>SELECT ... FOR UPDATE</code>)</h2>
+        <pre><code>-- Chuẩn bị: đặt SiSoToiDa = 7 khi LHP2401001 đã có 6 đăng ký
+UPDATE qldt.LopHocPhan SET SiSoToiDa = 7 WHERE MaLHP = 'LHP2401001';
+
+-- [T1 - Phiên A] Giữ khóa dòng LHP2401001, đăng ký thành công (7/7), chưa COMMIT
+BEGIN; CALL qldt.sp_DangKyHocPhan('SV2001004', 'LHP2401001', NULL, NULL);
+
+-- [T2 - Phiên B] Bị chặn chờ khóa FOR UPDATE của Phiên A
+BEGIN; CALL qldt.sp_DangKyHocPhan('SV2001003', 'LHP2401001', NULL, NULL);
+
+-- [T3 - Phiên A] COMMIT nhả khóa -&gt; [T4 - Phiên B] đếm thấy 7/7 -&gt; từ chối an toàn.</code></pre>
+      </article>
+
+      <article class="card">
+        <p class="eyebrow">4. THỰC NGHIỆM ĐO HIỆU NĂNG (sql/08_Explain_Analyze_ThucNghiem.sql)</p>
+        <h2>So sánh <code>EXPLAIN (ANALYZE, BUFFERS)</code>: Seq Scan vs Index Scan</h2>
+        <pre><code>-- 1a. Tắt Index Scan để đo Sequential Scan
+SET enable_indexscan = off; SET enable_bitmapscan = off;
+EXPLAIN (ANALYZE, BUFFERS) SELECT MaSV, MaLHP, Diem FROM qldt.DangKy WHERE Diem &gt;= 8.0;
+
+-- 1b. Bật lại Index Scan (Partial Index idx_dangky_diem)
+SET enable_indexscan = on; SET enable_bitmapscan = on;
+EXPLAIN (ANALYZE, BUFFERS) SELECT MaSV, MaLHP, Diem FROM qldt.DangKy WHERE Diem &gt;= 8.0;</code></pre>
+      </article>
     </section>
 
     <footer class="page-footer">

@@ -79,7 +79,7 @@ function updateCounts() {
 }
 
 function showPage(page) {
-  ['workspace', 'dataset', 'simulation', 'history', 'guide'].forEach(name => {
+  ['workspace', 'dataset', 'simulation', 'history', 'sql-lab', 'guide'].forEach(name => {
     const el = $(`page-${name}`);
     if (el) el.hidden = name !== page;
   });
@@ -94,6 +94,7 @@ function showPage(page) {
       dataset: 'Dữ liệu & sơ đồ EER',
       simulation: 'Nghiệp vụ & Ràng buộc CSDL',
       history: 'Lịch sử phân tích (ObjectDB)',
+      'sql-lab': 'SQL nâng cao & 4NF',
       guide: 'Hướng dẫn sử dụng'
     }[page] || 'Phân tích lược đồ';
   }
